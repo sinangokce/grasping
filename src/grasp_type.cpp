@@ -44,9 +44,9 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
   wentback_pub = nh.advertise<std_msgs::String>("allegroHand_0/libsss_cmd", 1);
 }
 
-AllegroNodeGraspController::~AllegroNodeGraspController() {
+/*AllegroNodeGraspController::~AllegroNodeGraspController() {
   delete mutex;
-}
+}*/
 
 void AllegroNodeGraspController::speedPerCallback(const handtracker::spper &msg) {
   speed_Percentage = msg.sPer;

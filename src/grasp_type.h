@@ -45,7 +45,7 @@ class AllegroNodeGraspController {
 
     AllegroNodeGraspController();
 
-    ~AllegroNodeGraspController();
+    //~AllegroNodeGraspController();
 
     void graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg);
 
@@ -81,7 +81,7 @@ class AllegroNodeGraspController {
     ros::Publisher wentback_pub;
 
 
-    boost::mutex *mutex;
+    //boost::mutex *mutex;
 
     sensor_msgs::JointState desired_state;
     sensor_msgs::JointState current_state;
