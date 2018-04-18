@@ -241,7 +241,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
         for (int i = 0; i < DOF_JOINTS; i++) {
           distance[i] = current_state.position[i] - home_pose[i];
-          current_state.velocity[i] = (distance[i]/12000);
+          current_state.velocity[i] = (distance[i]/5000);
           joint[i] = 0;
           stop_table[i] = 0;
           reverse_table[i] = 0;
@@ -267,7 +267,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
         for (int i = 0; i < DOF_JOINTS; i++) {
           distance[i] = desired_position[i] - current_state.position[i];
-          current_state.velocity[i] = (distance[i]/12000);
+          current_state.velocity[i] = (distance[i]/30000);
           joint[i] = 0;
           stop_table[i] = 0;
           reverse_table[i] = 0;
@@ -286,7 +286,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
       for (int i = 0; i < DOF_JOINTS; i++) {
         distance[i] = desired_position[i] - current_state.position[i];
-        current_state.velocity[i] = (distance[i]/8000);
+        current_state.velocity[i] = (distance[i]/30000);
         joint[i] = 0;
         stop_table[i] = 0;
         reverse_table[i] = 0;
