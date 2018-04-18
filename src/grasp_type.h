@@ -96,12 +96,20 @@ class AllegroNodeGraspController {
             5.0, -5.0, 50.0, 45.0, 60.0, 25.0, 15.0, 45.0
         };*/
 
-    double home_pose[16] =
+    double home_pose_2[16] =
         {
             // Default (HOME) position (degrees), set at system start if
             // no 'initial_position.yaml' parameter is loaded.
             0.0,  -0.17, 0.79, 0.79,  0.0, -0.17, 0.79, 0.79,
             0.09, -0.09, 0.87, 0.79,  1.05, 0.44, 0.26, 0.79
+        }; 
+
+    double home_pose[16] =
+        {
+            // Default (HOME) position (degrees), set at system start if
+            // no 'initial_position.yaml' parameter is loaded.
+            0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,
+            0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0
         };    
 
     double power[16] =
@@ -119,14 +127,14 @@ class AllegroNodeGraspController {
 
     double pinch[16] =
         {
-            0.0, 0.83, 0.89, 0.90, 0.0, -0.17, 0.79, 0.79,
-            0.09, -0.09, 0.87, 0.79,  1.35, 0.0, 0.76, 0.29
+            0.0, 0.83, 0.89, 0.90, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0,  0.0 , 0.0,  1.35, 0.0, 0.76, 0.29
         };
 
     double thumb[16] =
         {
             0.0, 0.78, 1.09, 0.88,  -0.19, 0.82, 1.09, 0.80,
-            0.09, -0.09, 0.87, 0.79,    1.35, 0.23, 0.70, 0.55                             
+            0.0, 0.0,  0.0,  0.0,    1.35, 0.23, 0.70, 0.55                             
         }; 
 
   double desired_position[DOF_JOINTS] = {0.0};

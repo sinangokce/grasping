@@ -66,19 +66,24 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   wentback_condition = 0;
 
   if (grasp_type.compare("open") == 0) {
-
-    for (int i = 0; i < DOF_JOINTS; i++) {
-      joint[i] = 0;
-      stop_table[i] = 0;
+    if(wentback_condition == 1) {
+      for (int i = 0; i < DOF_JOINTS; i++) {
+        joint[i] = 1;
+        stop_table[i] = 1;
+      }
     }
-
-    reverse = 1;
-    back = 1;
-    startclosing = 0;
-
-    stop_ss << "open";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
+    else {
+      for (int i = 0; i < DOF_JOINTS; i++) {
+        joint[i] = 0;
+        stop_table[i] = 0;
+      }
+      reverse = 1;
+      back = 1;
+      startclosing = 0;
+      stop_ss << "open";
+      stop_msg.data = stop_ss.str();
+      stop_pub.publish(stop_msg);
+    }    
   }
 
   else if (grasp_type.compare("stop") == 0) {
@@ -276,7 +281,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
       current_state.position.resize(DOF_JOINTS);
 
       for (int i = 0; i < DOF_JOINTS; i++) {
-        current_state.position[i] = home_pose[i];
+        current_state.position[i] = home_pose_2[i];
       }
 
       for (int i = 0; i < DOF_JOINTS; i++) {
@@ -331,8 +336,7 @@ void AllegroNodeGraspController::nextStateCallback(const sensor_msgs::JointState
         wentback_msg.data = wentback_ss.str(); //this check is useful for initializion for a new pose.
         wentback_pub.publish(wentback_msg);
       }
-      
-    }   
+    }  
 
     current_state_pub.publish(current_state);
   }
