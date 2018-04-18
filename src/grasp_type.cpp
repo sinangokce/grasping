@@ -1,4 +1,4 @@
-#include "grasp_type.h"
+#include <grasping/grasp_type.h>
 #include <stdio.h>
 //#include <algorithm>
 #include <iterator>
@@ -24,6 +24,8 @@ int wentback;
 int wentback_condition;
 int first_run;
 int a; 
+float sensor_data[8];
+int sensor_stop[8];
 
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
@@ -34,6 +36,8 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
   SpeedPer_sub = nh.subscribe("/lwr/speedPercentage", 10, &AllegroNodeGraspController::speedPerCallback, this);
 
   desired_state_pub = nh.advertise<sensor_msgs::JointState>("allegroHand_0/joint_cmd", 1);
+
+  sensor_data_sub = nh.subscribe("/LasaDataStream", 10, &AllegroNodeGraspController::sensorDataCallback, this);
 
   next_state_sub = nh.subscribe(NEXT_STATE_TOPIC, 1, &AllegroNodeGraspController::nextStateCallback, this);
 
@@ -51,6 +55,113 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
 void AllegroNodeGraspController::speedPerCallback(const handtracker::spper &msg) {
   speed_Percentage = msg.sPer;
   hand_Direction = msg.dir;
+}
+
+void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
+
+
+  std_msgs::String stop_msg;
+  std::stringstream stop_ss;
+
+  //std::cout << "hey" << msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11] << std::endl;
+  //std::cout << msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5] << std::endl;
+  //std::cout << msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5] << std::endl;
+
+//THUMB
+  sensor_data[0] = average((msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11]),  6);
+  sensor_data[1] = average((msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5]), 12);
+
+//INDEX
+  sensor_data[2] = average((msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5]), 13);
+  sensor_data[3] = average((msg.index2_f[0]+msg.index2_f[1]+msg.index2_f[2]+msg.index2_f[3]+msg.index2_s[0]+msg.index2_s[1]+msg.index2_s[2]), 7);
+
+
+//MIDDLE
+  sensor_data[4] = average((msg.ring1_f[0]+msg.ring1_f[1]+msg.ring1_f[2]+msg.ring1_f[3]+msg.ring1_f[4]+msg.ring1_f[5]+msg.ring1_f[6]+msg.ring1_s[0]+msg.ring1_s[1]+msg.ring1_s[2]+msg.ring1_s[4]+msg.ring1_s[5]), 12);
+  sensor_data[5] = average((msg.middle1_f[14]+msg.middle1_f[15]+msg.middle2_f[0]+msg.middle2_f[1]+msg.middle2_f[2]+msg.middle2_f[3]+msg.middle1_s[10]+msg.middle1_s[11]+msg.middle1_s[13]+msg.middle1_s[14]+msg.middle1_s[15]+msg.middle2_s[0]+msg.middle2_s[1]+msg.middle2_s[2]), 14);
+
+
+//RING
+  sensor_data[6] = average((msg.ring1_f[14]+msg.ring1_f[15]+msg.pinky1_f[0]+msg.pinky1_f[1]+msg.pinky1_f[2]+msg.pinky1_f[3]+msg.pinky1_f[4]+msg.pinky1_f[5]+msg.pinky1_f[6]+msg.pinky1_f[12]+msg.ring1_s[7]+msg.ring1_s[10]+msg.ring1_s[11]+msg.ring1_s[13]+msg.ring1_s[14]+msg.ring1_s[15]+msg.pinky1_s[0]+msg.pinky1_s[1]+msg.pinky1_s[2]+msg.pinky1_s[4]+msg.pinky1_s[5]+msg.pinky1_s[8]), 22);
+  sensor_data[7] = average((msg.ring2_f[0]+msg.ring2_f[1]+msg.ring2_f[2]+msg.ring2_f[3]+msg.ring2_s[0]+msg.ring2_s[1]+msg.ring2_s[2]+msg.ring2_s[3]), 8);
+
+  //std::cout << sensor_data[3] << std::endl;
+
+  for(int i = 0; i < 8; i++){
+
+    if(sensor_data[i] > 1) 
+      sensor_stop[i] = 1;
+    else  
+      sensor_stop[i] = 0;
+
+  }  
+
+  
+  if(sensor_stop[0] == 1) {
+    stop_ss << "thumb_up";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[15] = 1;
+  }
+
+  if(sensor_stop[1] == 1) {
+    stop_ss << "thumb_down";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[14] = 1;
+  }
+
+  if(sensor_stop[2] == 1) {
+    stop_ss << "index_up";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[3] = 1;
+  }
+
+  if(sensor_stop[3] == 1) {
+    stop_ss << "index_down";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[2] = 1;
+  }
+
+
+  if(sensor_stop[4] == 1) {
+    stop_ss << "middle_up";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[7] = 1;
+  }
+
+  if(sensor_stop[5] == 1) {
+    stop_ss << "middle_down";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[6] = 1;
+  }
+
+  if(sensor_stop[6] == 1) {
+    stop_ss << "little_up";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[11] = 1;
+  }
+
+  if(sensor_stop[7] == 1) {
+    stop_ss << "little_down";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[10] = 1;
+  }
+
 }
 
 void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg) {
@@ -381,6 +492,15 @@ bool AllegroNodeGraspController::checkEquality(int array[]) {
   return true;
 }
 
+float AllegroNodeGraspController::average(int sum, int number) {
+
+  float avg;
+
+  avg = sum / number;
+
+  return avg;
+}
+
 void AllegroNodeGraspController::initControllerxx() {
   current_state.position.resize(DOF_JOINTS);
   current_state.velocity.resize(DOF_JOINTS);
@@ -405,9 +525,9 @@ void AllegroNodeGraspController::doIt() {
   }
 }
 
-int main(int argc, char **argv) {
+/*int main(int argc, char **argv) {
   ros::init(argc, argv, "allegro_hand_core_grasp");
   AllegroNodeGraspController grasping;
 
   grasping.doIt();
-}
+}*/

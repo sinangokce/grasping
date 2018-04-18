@@ -1,26 +1,7 @@
-//#include "allegro_node.h"
-#include <stdio.h>
-#include "std_msgs/String.h"
-#include <iostream>
-#include <string>
-#include <signal.h>
-#include <termios.h>
-#include <unistd.h>
-#include <sstream>
-#include "ros/ros.h"
-#include "std_msgs/Float32.h"
-
-#include <string>
-
-#include "sensor_msgs/JointState.h"
+#include <grasping/current_listener.h>
 
 #define DOF_JOINTS 16
 
-const std::string STOP_TOPIC = "allegroHand_0/stop_topic";
-const std::string CURRENT_LISTENER_TOPIC = "allegroHand_0/current_listener";
-const std::string NEXT_STATE_TOPIC = "allegroHand_0/next_state";
-
-//const int DOF_JOINTS = 16;
 
 double velocity[DOF_JOINTS] = {0.0};
 double dt;
@@ -28,23 +9,6 @@ int stop_table[16];
 bool cond;
 int back = 0;
 int speedPer = 1;
-
-class currentListener
-{
- public:
-  currentListener();
-  void stopCallback(const std_msgs::String::ConstPtr &msg);
-  void currentListenerCallback(const sensor_msgs::JointState &msg);
-  
- private:
-  ros::NodeHandle nh;
-  ros::Time tnow;
-  ros::Time tstart;
-  ros::Subscriber desired_grasp_type_sub;
-  ros::Subscriber stop_sub;
-  ros::Publisher next_state_pub;
-  sensor_msgs::JointState current_joint_state;
-};
 
 currentListener::currentListener() {
 
@@ -54,7 +18,6 @@ currentListener::currentListener() {
 
   current_joint_state.position.resize(DOF_JOINTS);
   current_joint_state.velocity.resize(DOF_JOINTS);
-
 
   stop_sub = nh.subscribe(STOP_TOPIC, 1, &currentListener::stopCallback, this);
   desired_grasp_type_sub = nh.subscribe(CURRENT_LISTENER_TOPIC, 1, &currentListener::currentListenerCallback, this);
@@ -162,12 +125,3 @@ void currentListener::currentListenerCallback(const sensor_msgs::JointState &msg
   next_state_pub.publish(current_joint_state);
 }
 
-int main(int argc, char **argv) {
-  ros::init(argc, argv, "allegro_hand_current_listener");
-  currentListener current_listener;
-  ros::Rate rate(50.0);
-  while (ros::ok()) {
-    rate.sleep();
-    ros::spinOnce();
-  }
-}

@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   handtracker
+  glove_tekscan_ros_wrapper
 # roslaunch  # Disabled due to testing
 )
 
@@ -18,10 +19,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES allegro_hand_controllers
+  INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp sensor_msgs std_msgs
-#  DEPENDS
 )
 
 ###########
@@ -29,15 +28,16 @@ catkin_package(
 ###########
 
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare executables
-add_executable(grasp_type src/grasp_type.cpp)
+add_executable(grasp_type src/grasp_type.cpp src/grasp_type_node.cpp)
 target_link_libraries(grasp_type allegro_node ${catkin_LIBRARIES})
 add_dependencies(grasp_type ${catkin_EXPORTED_TARGETS})
 
-add_executable(current_listener src/current_listener.cpp)
+add_executable(current_listener src/current_listener.cpp src/current_listener_node.cpp)
 target_link_libraries(current_listener allegro_node ${catkin_LIBRARIES})
 
 # This is disabled until roslaunch tests can pass required arguments.
