@@ -27,6 +27,10 @@ currentListener::currentListener() {
 void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
   const std::string condition = msg->data;
 
+
+  for (int i = 0; i < DOF_JOINTS; i++) 
+    stop_table[i] = 0;
+
 //Simulated velocity parameter (keyboard)
   if (condition.compare("one") == 0) {
     speedPer = 1;
@@ -74,42 +78,96 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
   if (condition.compare("thumb_up") == 0) {
     stop_table[15] = 1;
     back = 0;
-  } 
+  }
+  if(condition.compare("thumb_up_continue") == 0) {
+    stop_table[15] = 0;
+    back = 0;
+  }
 
   if (condition.compare("thumb_down") == 0) {
     stop_table[14] = 1;
+    stop_table[13] = 1;
+    stop_table[12] = 1;
+    back = 0;
+  }
+  if(condition.compare("thumb_down_continue") == 0) {
+    stop_table[14] = 0;
+    stop_table[13] = 0;
+    stop_table[12] = 0;
     back = 0;
   } 
 
+
   if (condition.compare("index_up") == 0) {
+    std::cout << "stopped" << std::endl;
     stop_table[3] = 1;
     back = 0;
   } 
+  if(condition.compare("index_up_continue") == 0) {
+    ROS_INFO("continue");
+    stop_table[3] = 0;
+    back = 0;
+  }
 
   if (condition.compare("index_down") == 0) {
     stop_table[2] = 1;
+    stop_table[1] = 1;
+    stop_table[0] = 1;
     back = 0;
-  } 
+  }
+  if(condition.compare("index_down_continue") == 0) {
+    stop_table[2] = 0;
+    stop_table[1] = 0;
+    stop_table[0] = 0;
+    back = 0;
+  }  
 
   if (condition.compare("middle_up") == 0) {
+    
     stop_table[7] = 1;
     back = 0;
   } 
+  if(condition.compare("middle_up_continue") == 0) {
+    
+    stop_table[7] = 0;
+    back = 0;
+  }
 
   if (condition.compare("middle_down") == 0) {
+    
     stop_table[6] = 1;
+    stop_table[5] = 1;
+    stop_table[4] = 1;
     back = 0;
   } 
+  if(condition.compare("middle_down_continue") == 0) {
+    stop_table[6] = 0;
+    stop_table[5] = 0;
+    stop_table[4] = 0;
+    back = 0;
+  }  
 
   if (condition.compare("little_up") == 0) {
     stop_table[11] = 1;
     back = 0;
   } 
+  if(condition.compare("little_up_continue") == 0) {
+    stop_table[11] = 0;
+    back = 0;
+  }
 
   if (condition.compare("little_down") == 0) {
     stop_table[10] = 1;
+    stop_table[9] = 1;
+    stop_table[8] = 1;
     back = 0;
   } 
+  if(condition.compare("little_down_continue") == 0) {
+    stop_table[10] = 0;
+    stop_table[9] = 0;
+    stop_table[8] = 0;
+    back = 0;
+  }
 
 
 //Simulated force sensor data(keyboard)

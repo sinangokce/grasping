@@ -61,7 +61,8 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
 
 
   std_msgs::String stop_msg;
-  std::stringstream stop_ss;
+  
+
 
   //std::cout << "hey" << msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11] << std::endl;
   //std::cout << msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5] << std::endl;
@@ -85,11 +86,12 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
   sensor_data[6] = average((msg.ring1_f[14]+msg.ring1_f[15]+msg.pinky1_f[0]+msg.pinky1_f[1]+msg.pinky1_f[2]+msg.pinky1_f[3]+msg.pinky1_f[4]+msg.pinky1_f[5]+msg.pinky1_f[6]+msg.pinky1_f[12]+msg.ring1_s[7]+msg.ring1_s[10]+msg.ring1_s[11]+msg.ring1_s[13]+msg.ring1_s[14]+msg.ring1_s[15]+msg.pinky1_s[0]+msg.pinky1_s[1]+msg.pinky1_s[2]+msg.pinky1_s[4]+msg.pinky1_s[5]+msg.pinky1_s[8]), 22);
   sensor_data[7] = average((msg.ring2_f[0]+msg.ring2_f[1]+msg.ring2_f[2]+msg.ring2_f[3]+msg.ring2_s[0]+msg.ring2_s[1]+msg.ring2_s[2]+msg.ring2_s[3]), 8);
 
-  //std::cout << sensor_data[3] << std::endl;
+  std::cout << sensor_data[2] << std::endl;
+  std::cout << sensor_data[3] << std::endl;
 
   for(int i = 0; i < 8; i++){
 
-    if(sensor_data[i] > 1) 
+    if(sensor_data[i] > 8) 
       sensor_stop[i] = 1;
     else  
       sensor_stop[i] = 0;
@@ -98,68 +100,161 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
 
   
   if(sensor_stop[0] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "thumb_up";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[15] = 1;
   }
+  else if(sensor_stop[0] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "thumb_up_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+    stop_table[15] = 0;
+  }
+
+
 
   if(sensor_stop[1] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "thumb_down";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[14] = 1;
+    stop_table[13] = 1;
+    stop_table[12] = 1;
+  }
+  else if(sensor_stop[1] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "thumb_down_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[14] = 0;
+    stop_table[13] = 0;
+    stop_table[12] = 0;
   }
 
+
+
+
   if(sensor_stop[2] == 1) {
+    std::stringstream stop_ss;
+    std::cout << "i'm stopping" << std::endl;
     stop_ss << "index_up";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[3] = 1;
   }
+  else if(sensor_stop[2] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "index_up_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[3] = 0;
+  }
 
   if(sensor_stop[3] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "index_down";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[2] = 1;
+    stop_table[1] = 1;
+    stop_table[0] = 1;
+  }
+  else if(sensor_stop[3] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "index_down_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[2] = 0;
+    stop_table[1] = 0;
+    stop_table[0] = 0;
   }
 
 
   if(sensor_stop[4] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "middle_up";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[7] = 1;
   }
+  else if(sensor_stop[4] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "middle_up_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[7] = 0;
+  }
 
   if(sensor_stop[5] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "middle_down";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[6] = 1;
+    stop_table[5] = 1;
+    stop_table[4] = 1;
+  }
+  else if(sensor_stop[5] == 0) {
+    std::stringstream stop_ss;
+    stop_ss << "middle_down_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[6] = 0;
+    stop_table[5] = 0;
+    stop_table[4] = 0;
   }
 
   if(sensor_stop[6] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "little_up";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[11] = 1;
   }
+  else if(sensor_stop[6] == 0){
+    std::stringstream stop_ss;
+    stop_ss << "little_up_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[11] = 0;
+  }
 
   if(sensor_stop[7] == 1) {
+    std::stringstream stop_ss;
     stop_ss << "little_down";
     stop_msg.data = stop_ss.str();
     stop_pub.publish(stop_msg);
 
     stop_table[10] = 1;
+    stop_table[9] = 1;
+    stop_table[8] = 1;
+  }
+  else if(sensor_stop[7] == 0){
+    std::stringstream stop_ss;
+    stop_ss << "little_down_continue";
+    stop_msg.data = stop_ss.str();
+    stop_pub.publish(stop_msg);
+
+    stop_table[10] = 0;
+    stop_table[9] = 0;
+    stop_table[8] = 0;
   }
 
 }
@@ -167,6 +262,8 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
 void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg) {
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
+
+
 
   std_msgs::String stop_msg;
   std::stringstream stop_ss;
@@ -338,6 +435,8 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     if (first_run != 1) {
       if(wentback_condition == 0) {
 
+        ROS_INFO("adasda");
+
         reverse = 1;
         back = 1;
         startclosing = 0;
@@ -357,6 +456,9 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
           stop_table[i] = 0;
           reverse_table[i] = 0;
         }
+         
+
+
         wentback_condition = 1;
         if(a == 1)
           current_state_pub.publish(current_state);
@@ -392,7 +494,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
       current_state.position.resize(DOF_JOINTS);
 
       for (int i = 0; i < DOF_JOINTS; i++) {
-        current_state.position[i] = home_pose_2[i];
+        current_state.position[i] = home_pose[i];
       }
 
       for (int i = 0; i < DOF_JOINTS; i++) {
