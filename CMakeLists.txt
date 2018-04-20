@@ -15,6 +15,17 @@ find_package(catkin REQUIRED COMPONENTS
 # roslaunch  # Disabled due to testing
 )
 
+add_message_files(
+   FILES
+   stop_table.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs 
+  geometry_msgs
+)
+
 ###################################
 ## catkin specific configuration ##
 ###################################

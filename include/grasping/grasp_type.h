@@ -10,6 +10,7 @@
 #include "std_msgs/Float32.h"
 #include "handtracker/spper.h"
 #include "glove_tekscan_ros_wrapper/LasaDataStreamWrapper.h"
+#include "grasping/stop_table.h"
 
 
 #include <string>
@@ -21,6 +22,7 @@
 #define DOF_JOINTS 16
 
 const std::string STOP_TOPIC = "allegroHand_0/stop_topic";
+const std::string STOP_TABLE_TOPIC = "allegroHand_0/stop_table_topic";
 const std::string CURRENT_LISTENER_TOPIC = "allegroHand_0/current_listener";
 const std::string NEXT_STATE_TOPIC = "allegroHand_0/next_state";
 
@@ -85,6 +87,7 @@ class AllegroNodeGraspController {
     ros::Publisher current_state_pub;
     ros::Publisher desired_state_pub;
     ros::Publisher stop_pub;
+    ros::Publisher stop_table_pub;
     ros::Publisher wentback_pub;
 
 

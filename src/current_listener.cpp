@@ -20,8 +20,17 @@ currentListener::currentListener() {
   current_joint_state.velocity.resize(DOF_JOINTS);
 
   stop_sub = nh.subscribe(STOP_TOPIC, 1, &currentListener::stopCallback, this);
+  stop_table_sub = nh.subscribe(STOP_TABLE_TOPIC, 10, &currentListener::stopTableCallback, this);
   desired_grasp_type_sub = nh.subscribe(CURRENT_LISTENER_TOPIC, 1, &currentListener::currentListenerCallback, this);
   next_state_pub =nh.advertise<sensor_msgs::JointState>(NEXT_STATE_TOPIC, 1);
+}
+
+void currentListener::stopTableCallback(const grasping::stop_table &msg) {
+
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    stop_table[i] = msg.stop_table[i];
+    std::cout << stop_table[i] << std::endl;
+  }
 }
 
 void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
