@@ -29,7 +29,7 @@ void currentListener::stopTableCallback(const grasping::stop_table &msg) {
 
   for (int i = 0; i < DOF_JOINTS; i++) {
     stop_table[i] = msg.stop_table[i];
-    std::cout << stop_table[i] << std::endl;
+    std::cout <<"sensor "<<i<< ":"<< stop_table[i] << std::endl;
   }
 }
 
