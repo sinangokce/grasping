@@ -1,0 +1,8 @@
+float32 upper_thumb
+float32 lower_thumb
+float32 upper_index
+float32 lower_index
+float32 upper_middle
+float32 lower_middle
+float32 upper_little
+float32 lower_little

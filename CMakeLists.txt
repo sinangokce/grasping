@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
    FILES
    stop_table.msg
+   sensor_data.msg
 )
 
 generate_messages(

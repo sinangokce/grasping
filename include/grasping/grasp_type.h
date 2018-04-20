@@ -11,6 +11,7 @@
 #include "handtracker/spper.h"
 #include "glove_tekscan_ros_wrapper/LasaDataStreamWrapper.h"
 #include "grasping/stop_table.h"
+#include "grasping/sensor_data.h" //plot
 
 
 #include <string>
@@ -23,6 +24,7 @@
 
 const std::string STOP_TOPIC = "allegroHand_0/stop_topic";
 const std::string STOP_TABLE_TOPIC = "allegroHand_0/stop_table_topic";
+const std::string SENSOR_DATA_TOPIC = "allegroHand_0/sensor_data_topic";//plot
 const std::string CURRENT_LISTENER_TOPIC = "allegroHand_0/current_listener";
 const std::string NEXT_STATE_TOPIC = "allegroHand_0/next_state";
 
@@ -88,6 +90,7 @@ class AllegroNodeGraspController {
     ros::Publisher desired_state_pub;
     ros::Publisher stop_pub;
     ros::Publisher stop_table_pub;
+    ros::Publisher sensor_data_pub;
     ros::Publisher wentback_pub;
 
 
@@ -120,26 +123,39 @@ class AllegroNodeGraspController {
             // no 'initial_position.yaml' parameter is loaded.
             0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,
             0.0,  0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0
-        };    
+        }; 
 
     double power[16] =
         {
             0.19, 0.76, 0.91, 1.31,  0.0, 0.76, 0.91, 1.31,
            -0.19, 0.76, 0.91, 1.31, 1.40, 0.43, 0.92, 0.51
         }; 
+       
+
+    /*double power[16] =
+        {
+            -0.10, 0.76, 0.91, 0.0,  0.0, 0.76, 0.91, 1.31,
+           -0.19, 0.76, 0.91, 1.31, 1.28, 0.43, 0.96, 0.0
+        }; */
 
 
     double lateral[16] =
         {
            -0.06, 1.60, 1.60, 0.0,  0.0,  1.60, 1.60, 0.0,
             0.0,  1.60, 1.60, 0.0,  0.37, 0.29, 1.50, 0.0
-        };   
+        };  
 
     double pinch[16] =
         {
+            0.0, 0.83, 0.89, 0.90, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0,  0.0 , 0.0,  1.35, 0.0, 0.76, 0.29
+        };       
+
+    /*double pinch[16] =
+        {
             0.0, 0.83, 0.89, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0,  0.0 , 0.0,  1.35, 0.0, 0.90, 0.0
-        };
+        };*/
 
     double thumb[16] =
         {

@@ -47,6 +47,8 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
 
   stop_table_pub = nh.advertise<grasping::stop_table>(STOP_TABLE_TOPIC, 10); 
 
+  sensor_data_pub = nh.advertise<grasping::sensor_data>(SENSOR_DATA_TOPIC, 10); //plot
+
   wentback_pub = nh.advertise<std_msgs::String>("allegroHand_0/libsss_cmd", 1);
 }
 
@@ -66,8 +68,6 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
     stop_table[i] = 0;
   }  
   
-
-
   //std::cout << "hey" << msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11] << std::endl;
   //std::cout << msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5] << std::endl;
   //std::cout << msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5] << std::endl;
@@ -90,8 +90,18 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
   sensor_data[6] = average((msg.ring1_f[14]+msg.ring1_f[15]+msg.pinky1_f[0]+msg.pinky1_f[1]+msg.pinky1_f[2]+msg.pinky1_f[3]+msg.pinky1_f[4]+msg.pinky1_f[5]+msg.pinky1_f[6]+msg.pinky1_f[12]+msg.ring1_s[7]+msg.ring1_s[10]+msg.ring1_s[11]+msg.ring1_s[13]+msg.ring1_s[14]+msg.ring1_s[15]+msg.pinky1_s[0]+msg.pinky1_s[1]+msg.pinky1_s[2]+msg.pinky1_s[4]+msg.pinky1_s[5]+msg.pinky1_s[8]), 22);
   sensor_data[7] = average((msg.ring2_f[0]+msg.ring2_f[1]+msg.ring2_f[2]+msg.ring2_f[3]+msg.ring2_s[0]+msg.ring2_s[1]+msg.ring2_s[2]+msg.ring2_s[3]), 8);
 
-  //std::cout << sensor_data[2] << std::endl;
-  //std::cout << sensor_data[3] << std::endl;
+  grasping::sensor_data sensor_data_msg;
+  
+  sensor_data_msg.upper_thumb =  sensor_data[0];
+  sensor_data_msg.lower_thumb =  sensor_data[1];
+  sensor_data_msg.upper_index =  sensor_data[2];
+  sensor_data_msg.lower_index =  sensor_data[3];
+  sensor_data_msg.upper_middle =  sensor_data[4];
+  sensor_data_msg.lower_middle =  sensor_data[5];
+  sensor_data_msg.upper_little =  sensor_data[6];
+  sensor_data_msg.lower_little =  sensor_data[7];
+
+  sensor_data_pub.publish(sensor_data_msg);
 
   for(int i = 0; i < 8; i++){
 
