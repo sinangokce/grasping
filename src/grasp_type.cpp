@@ -24,8 +24,7 @@ int wentback;
 int wentback_condition;
 int first_run;
 int a; 
-float sensor_data[8];
-int sensor_stop[8];
+
 
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
@@ -52,10 +51,6 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
   wentback_pub = nh.advertise<std_msgs::String>("allegroHand_0/libsss_cmd", 1);
 }
 
-/*AllegroNodeGraspController::~AllegroNodeGraspController() {
-  delete mutex;
-}*/
-
 void AllegroNodeGraspController::speedPerCallback(const handtracker::spper &msg) {
   speed_Percentage = msg.sPer;
   hand_Direction = msg.dir;
@@ -63,39 +58,61 @@ void AllegroNodeGraspController::speedPerCallback(const handtracker::spper &msg)
 
 void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
 
-
   for(int i = 0; i < 16; i++){
     stop_table[i] = 0;
   }  
-  
-  //std::cout << "hey" << msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11] << std::endl;
-  //std::cout << msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5] << std::endl;
-  //std::cout << msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5] << std::endl;
 
-//THUMB
-  sensor_data[0] = average((msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11]),  6);
-  sensor_data[1] = average((msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5]), 12);
+  float sensor_data[8];
+  float *p1;
+  p1 = sensor_data;
+
+  mapping(p1, msg);
+  plotSensorData(sensor_data);
+
+  int sensor_stop[8];
+  int *p2;
+  p2 = stop_table;
+
+  for(int i = 0; i < 8; i++){     //THRESHOLD
+    if(sensor_data[i] > 1) 
+      sensor_stop[i] = 1;
+    else  
+      sensor_stop[i] = 0;
+  }  
+
+  fillStopTable(p2, sensor_stop);
+
+  publishStopTableToCurrentListenerNode(stop_table);
+
+}
+
+void AllegroNodeGraspController::mapping(float *p, const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
+
+  //THUMB
+  *p     = average((msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11]),  6);
+  *(p+1) = average((msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5]), 12);
 
 //INDEX
-  sensor_data[2] = average((msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5]), 13);
-  sensor_data[3] = average((msg.index2_f[0]+msg.index2_f[1]+msg.index2_f[2]+msg.index2_f[3]+msg.index2_s[0]+msg.index2_s[1]+msg.index2_s[2]), 7);
-
+  *(p+2) = average((msg.middle1_f[0]+msg.middle1_f[1]+msg.middle1_f[2]+msg.middle1_f[3]+msg.middle1_f[4]+msg.middle1_f[5]+msg.middle1_f[6]+msg.index1_s[7]+msg.middle1_s[0]+msg.middle1_s[1]+msg.middle1_s[2]+msg.middle1_s[4]+msg.middle1_s[5]), 13);
+  *(p+3) = average((msg.index2_f[0]+msg.index2_f[1]+msg.index2_f[2]+msg.index2_f[3]+msg.index2_s[0]+msg.index2_s[1]+msg.index2_s[2]), 7);
 
 //MIDDLE
-  sensor_data[4] = average((msg.ring1_f[0]+msg.ring1_f[1]+msg.ring1_f[2]+msg.ring1_f[3]+msg.ring1_f[4]+msg.ring1_f[5]+msg.ring1_f[6]+msg.ring1_s[0]+msg.ring1_s[1]+msg.ring1_s[2]+msg.ring1_s[4]+msg.ring1_s[5]), 12);
-  sensor_data[5] = average((msg.middle1_f[14]+msg.middle1_f[15]+msg.middle2_f[0]+msg.middle2_f[1]+msg.middle2_f[2]+msg.middle2_f[3]+msg.middle1_s[10]+msg.middle1_s[11]+msg.middle1_s[13]+msg.middle1_s[14]+msg.middle1_s[15]+msg.middle2_s[0]+msg.middle2_s[1]+msg.middle2_s[2]), 14);
-
+  *(p+4) = average((msg.ring1_f[0]+msg.ring1_f[1]+msg.ring1_f[2]+msg.ring1_f[3]+msg.ring1_f[4]+msg.ring1_f[5]+msg.ring1_f[6]+msg.ring1_s[0]+msg.ring1_s[1]+msg.ring1_s[2]+msg.ring1_s[4]+msg.ring1_s[5]), 12);
+  *(p+5) = average((msg.middle1_f[14]+msg.middle1_f[15]+msg.middle2_f[0]+msg.middle2_f[1]+msg.middle2_f[2]+msg.middle2_f[3]+msg.middle1_s[10]+msg.middle1_s[11]+msg.middle1_s[13]+msg.middle1_s[14]+msg.middle1_s[15]+msg.middle2_s[0]+msg.middle2_s[1]+msg.middle2_s[2]), 14);
 
 //RING
-  sensor_data[6] = average((msg.ring1_f[14]+msg.ring1_f[15]+msg.pinky1_f[0]+msg.pinky1_f[1]+msg.pinky1_f[2]+msg.pinky1_f[3]+msg.pinky1_f[4]+msg.pinky1_f[5]+msg.pinky1_f[6]+msg.pinky1_f[12]+msg.ring1_s[7]+msg.ring1_s[10]+msg.ring1_s[11]+msg.ring1_s[13]+msg.ring1_s[14]+msg.ring1_s[15]+msg.pinky1_s[0]+msg.pinky1_s[1]+msg.pinky1_s[2]+msg.pinky1_s[4]+msg.pinky1_s[5]+msg.pinky1_s[8]), 22);
-  sensor_data[7] = average((msg.ring2_f[0]+msg.ring2_f[1]+msg.ring2_f[2]+msg.ring2_f[3]+msg.ring2_s[0]+msg.ring2_s[1]+msg.ring2_s[2]+msg.ring2_s[3]), 8);
+  *(p+6) = average((msg.ring1_f[14]+msg.ring1_f[15]+msg.pinky1_f[0]+msg.pinky1_f[1]+msg.pinky1_f[2]+msg.pinky1_f[3]+msg.pinky1_f[4]+msg.pinky1_f[5]+msg.pinky1_f[6]+msg.pinky1_f[12]+msg.ring1_s[7]+msg.ring1_s[10]+msg.ring1_s[11]+msg.ring1_s[13]+msg.ring1_s[14]+msg.ring1_s[15]+msg.pinky1_s[0]+msg.pinky1_s[1]+msg.pinky1_s[2]+msg.pinky1_s[4]+msg.pinky1_s[5]+msg.pinky1_s[8]), 22);
+  *(p+7) = average((msg.ring2_f[0]+msg.ring2_f[1]+msg.ring2_f[2]+msg.ring2_f[3]+msg.ring2_s[0]+msg.ring2_s[1]+msg.ring2_s[2]+msg.ring2_s[3]), 8);
+}
+
+void AllegroNodeGraspController::plotSensorData(float sensor_data[]) {
 
   grasping::sensor_data sensor_data_msg;
   
-  sensor_data_msg.upper_thumb =  sensor_data[0];
-  sensor_data_msg.lower_thumb =  sensor_data[1];
-  sensor_data_msg.upper_index =  sensor_data[2];
-  sensor_data_msg.lower_index =  sensor_data[3];
+  sensor_data_msg.upper_thumb  =  sensor_data[0];
+  sensor_data_msg.lower_thumb  =  sensor_data[1];
+  sensor_data_msg.upper_index  =  sensor_data[2];
+  sensor_data_msg.lower_index  =  sensor_data[3];
   sensor_data_msg.upper_middle =  sensor_data[4];
   sensor_data_msg.lower_middle =  sensor_data[5];
   sensor_data_msg.upper_little =  sensor_data[6];
@@ -103,90 +120,86 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
 
   sensor_data_pub.publish(sensor_data_msg);
 
-  for(int i = 0; i < 8; i++){
+}
 
-    if(sensor_data[i] > 1) 
-      sensor_stop[i] = 1;
-    else  
-      sensor_stop[i] = 0;
-  }  
+void AllegroNodeGraspController::fillStopTable(int *p2, int sensor_stop[]) {
 
-  
   if(sensor_stop[0] == 1) {
-    stop_table[15] = 1;
+    *(p2+15) = 1;
   }
   else if(sensor_stop[0] == 0) {
-    stop_table[15] = 0;
+    *(p2+15) = 0;
   }
-
-
 
   if(sensor_stop[1] == 1) {
-    stop_table[14] = 1;
-    stop_table[13] = 1;
-    stop_table[12] = 1;
+    *(p2+14) = 1;
+    *(p2+13) = 1;
+    *(p2+12) = 1;
   }
   else if(sensor_stop[1] == 0) {
-    stop_table[14] = 0;
-    stop_table[13] = 0;
-    stop_table[12] = 0;
+    *(p2+14) = 0;
+    *(p2+13) = 0;
+    *(p2+12) = 0;
   }
-
 
   if(sensor_stop[2] == 1) {
-    stop_table[3] = 1;
+    *(p2+3) = 1;
   }
   else if(sensor_stop[2] == 0) {
-    stop_table[3] = 0;
+    *(p2+3) = 0;
   }
 
   if(sensor_stop[3] == 1) {
-    stop_table[2] = 1;
-    stop_table[1] = 1;
-    stop_table[0] = 1;
+    *(p2+2) = 1;
+    *(p2+1) = 1;
+    *(p2+0) = 1;
   }
   else if(sensor_stop[3] == 0) {
-    stop_table[2] = 0;
-    stop_table[1] = 0;
-    stop_table[0] = 0;
+    *(p2+2) = 0;
+    *(p2+1) = 0;
+    *(p2+0) = 0;
   }
 
 
   if(sensor_stop[4] == 1) {
-    stop_table[7] = 1;
+    *(p2+7) = 1;
   }
   else if(sensor_stop[4] == 0) {
-    stop_table[7] = 0;
+    *(p2+7) = 0;
   }
 
   if(sensor_stop[5] == 1) {
-    stop_table[6] = 1;
-    stop_table[5] = 1;
-    stop_table[4] = 1;
+    *(p2+6) = 1;
+    *(p2+5) = 1;
+    *(p2+4) = 1;
   }
   else if(sensor_stop[5] == 0) {
-    stop_table[6] = 0;
-    stop_table[5] = 0;
-    stop_table[4] = 0;
+    *(p2+6) = 0;
+    *(p2+5) = 0;
+    *(p2+4) = 0;
   }
 
   if(sensor_stop[6] == 1) {
-    stop_table[11] = 1;
+    *(p2+11) = 1;
   }
   else if(sensor_stop[6] == 0){
-    stop_table[11] = 0;
+    *(p2+11)= 0;
   }
 
   if(sensor_stop[7] == 1) {
-    stop_table[10] = 1;
-    stop_table[9] = 1;
-    stop_table[8] = 1;
+    *(p2+10) = 1;
+    *(p2+9) = 1;
+    *(p2+8) = 1;
   }
   else if(sensor_stop[7] == 0){
-    stop_table[10] = 0;
-    stop_table[9] = 0;
-    stop_table[8] = 0;
+    *(p2+10) = 0;
+    *(p2+9) = 0;
+    *(p2+8) = 0;
   }
+
+}
+
+void AllegroNodeGraspController::publishStopTableToCurrentListenerNode(int stop_table[]) {
 
   grasping::stop_table stop_table_msg;
 
@@ -195,8 +208,6 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
   } 
 
   stop_table_pub.publish(stop_table_msg);
-
-
 }
 
 void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg) {
@@ -213,6 +224,99 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   back = 0;
   wentback_condition = 0;
 
+  compareString(grasp_type);
+
+ 
+
+  
+
+  if (condinit == 1) {
+
+    if (first_run != 1) {
+      if(wentback_condition == 0) {
+
+        ROS_INFO("adasda");
+
+        reverse = 1;
+        back = 1;
+        startclosing = 0;
+
+        std_msgs::String stop_msg;
+        std::stringstream stop_ss;
+        stop_ss << "open";
+        stop_msg.data = stop_ss.str();
+        stop_pub.publish(stop_msg);
+
+        current_state.position.resize(DOF_JOINTS);
+
+        for (int i = 0; i < DOF_JOINTS; i++) {
+          distance[i] = current_state.position[i] - home_pose[i];
+          current_state.velocity[i] = (distance[i]/5000);
+          joint[i] = 0;
+          stop_table[i] = 0;
+          reverse_table[i] = 0;
+        }
+         
+
+
+        wentback_condition = 1;
+        if(a == 1)
+          current_state_pub.publish(current_state);
+      }
+
+      else if (wentback_condition == 1){
+        
+        reverse = 0;
+        back = 0;
+        startclosing = 1;
+
+        std_msgs::String stop_msg;
+        std::stringstream stop_ss;
+        stop_ss << "close";
+        stop_msg.data = stop_ss.str();
+        stop_pub.publish(stop_msg);
+
+        current_state.position.resize(DOF_JOINTS);
+
+        for (int i = 0; i < DOF_JOINTS; i++) {
+          distance[i] = desired_position[i] - current_state.position[i];
+          current_state.velocity[i] = (distance[i]/30000);
+          joint[i] = 0;
+          stop_table[i] = 0;
+          reverse_table[i] = 0;
+        }
+        current_state_pub.publish(current_state);
+      }
+    }
+
+    else {
+      startclosing = 1;
+      current_state.position.resize(DOF_JOINTS);
+
+      for (int i = 0; i < DOF_JOINTS; i++) {
+        current_state.position[i] = home_pose[i];
+      }
+
+      for (int i = 0; i < DOF_JOINTS; i++) {
+        distance[i] = desired_position[i] - current_state.position[i];
+        current_state.velocity[i] = (distance[i]/30000);
+        joint[i] = 0;
+        stop_table[i] = 0;
+        reverse_table[i] = 0;
+      }
+
+      first_run = 0;
+      current_state_pub.publish(current_state);
+    }
+
+  }
+}
+
+void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
+
+  std_msgs::String stop_msg;
+  std::stringstream stop_ss;
+
   if (grasp_type.compare("open") == 0) {
     if(wentback_condition == 1) {
       for (int i = 0; i < DOF_JOINTS; i++) {
@@ -220,6 +324,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
         stop_table[i] = 1;
       }
     }
+
     else {
       for (int i = 0; i < DOF_JOINTS; i++) {
         joint[i] = 0;
@@ -370,86 +475,6 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     a = 0;
   }
 
-  if (condinit == 1) {
-
-    if (first_run != 1) {
-      if(wentback_condition == 0) {
-
-        ROS_INFO("adasda");
-
-        reverse = 1;
-        back = 1;
-        startclosing = 0;
-
-        std_msgs::String stop_msg;
-        std::stringstream stop_ss;
-        stop_ss << "open";
-        stop_msg.data = stop_ss.str();
-        stop_pub.publish(stop_msg);
-
-        current_state.position.resize(DOF_JOINTS);
-
-        for (int i = 0; i < DOF_JOINTS; i++) {
-          distance[i] = current_state.position[i] - home_pose[i];
-          current_state.velocity[i] = (distance[i]/5000);
-          joint[i] = 0;
-          stop_table[i] = 0;
-          reverse_table[i] = 0;
-        }
-         
-
-
-        wentback_condition = 1;
-        if(a == 1)
-          current_state_pub.publish(current_state);
-      }
-
-      else if (wentback_condition == 1){
-        
-        reverse = 0;
-        back = 0;
-        startclosing = 1;
-
-        std_msgs::String stop_msg;
-        std::stringstream stop_ss;
-        stop_ss << "close";
-        stop_msg.data = stop_ss.str();
-        stop_pub.publish(stop_msg);
-
-        current_state.position.resize(DOF_JOINTS);
-
-        for (int i = 0; i < DOF_JOINTS; i++) {
-          distance[i] = desired_position[i] - current_state.position[i];
-          current_state.velocity[i] = (distance[i]/30000);
-          joint[i] = 0;
-          stop_table[i] = 0;
-          reverse_table[i] = 0;
-        }
-        current_state_pub.publish(current_state);
-      }
-    }
-
-    else {
-      startclosing = 1;
-      current_state.position.resize(DOF_JOINTS);
-
-      for (int i = 0; i < DOF_JOINTS; i++) {
-        current_state.position[i] = home_pose[i];
-      }
-
-      for (int i = 0; i < DOF_JOINTS; i++) {
-        distance[i] = desired_position[i] - current_state.position[i];
-        current_state.velocity[i] = (distance[i]/30000);
-        joint[i] = 0;
-        stop_table[i] = 0;
-        reverse_table[i] = 0;
-      }
-
-      first_run = 0;
-      current_state_pub.publish(current_state);
-    }
-
-  }
 }
 
 void AllegroNodeGraspController::nextStateCallback(const sensor_msgs::JointState &msg) {
@@ -551,12 +576,6 @@ void AllegroNodeGraspController::initControllerxx() {
   desired_state.velocity.resize(DOF_JOINTS);
 
   first_run = 1;
-
-  printf("*************************************\n");
-  printf("         Grasp (BHand) Method        \n");
-  printf("-------------------------------------\n");
-  printf("         Every command works.        \n");
-  printf("*************************************\n");
 }
 
 void AllegroNodeGraspController::doIt() {
@@ -566,10 +585,3 @@ void AllegroNodeGraspController::doIt() {
     ros::spinOnce();
   }
 }
-
-/*int main(int argc, char **argv) {
-  ros::init(argc, argv, "allegro_hand_core_grasp");
-  AllegroNodeGraspController grasping;
-
-  grasping.doIt();
-}*/

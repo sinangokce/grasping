@@ -28,36 +28,36 @@ const std::string SENSOR_DATA_TOPIC = "allegroHand_0/sensor_data_topic";//plot
 const std::string CURRENT_LISTENER_TOPIC = "allegroHand_0/current_listener";
 const std::string NEXT_STATE_TOPIC = "allegroHand_0/next_state";
 
-//const int DOF_JOINTS = 16;
-
-
-
-
-// Grasping controller that uses the BHand library for commanding various
-// pre-defined grasp (e.g., three-finger ping, envelop, etc...).
-//
-// This node is most useful when run with the keyboard node (the keyboard node
-// sends the correct String to this node). A map from String command -> Grasp
-// type is defined in the implementation (cpp) file.
-//
-// This node can also save & hold a position, but in constrast to the PD node
-// you do not have any control over the controller gains.
-//
-// Author: Felix Duvallet
-//
 class AllegroNodeGraspController {
 
  public:
 
     AllegroNodeGraspController();
 
-    //~AllegroNodeGraspController();
-
-    void graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg);
-
     void speedPerCallback(const handtracker::spper &msg);
 
+
+// Functions for treating the data coming from the sensors
     void sensorDataCallback(const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg);
+
+    void mapping(float *p, const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg);
+
+    void plotSensorData(float sensor_data[]);
+
+    void fillStopTable(int *p2, int sensor_stop[]);
+
+    void publishStopTableToCurrentListenerNode(int stop_table[]);
+
+
+// Functions to choose the grasp type
+    void graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg);
+
+    void compareString(std::string const &grasp_type);
+
+    
+
+    
+
 
     void nextStateCallback(const sensor_msgs::JointState &msg);
 
@@ -68,13 +68,6 @@ class AllegroNodeGraspController {
     void initControllerxx();
 
     void doIt();
-
-    //void computeDesiredTorque();
-
-    //void setJointCallback(const sensor_msgs::JointState &msg);
-
-    //void envelopTorqueCallback(const std_msgs::Float32 &msg);
-
     
  protected:
     ros::NodeHandle nh;
