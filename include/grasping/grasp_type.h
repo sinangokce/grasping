@@ -46,9 +46,6 @@ class AllegroNodeGraspController {
 
     void fillStopTable(int *p2, int sensor_stop[]);
 
-    void publishStopTableToCurrentListenerNode(int stop_table[]);
-
-
 // Functions to choose the grasp type
     void graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg);
 
@@ -56,12 +53,15 @@ class AllegroNodeGraspController {
 
     void moveToDesiredGraspType();
 
+    void updateCurrentPosition();
+
+
     
 
     
 
 
-    void nextStateCallback(const sensor_msgs::JointState &msg);
+    //void nextStateCallback(const sensor_msgs::JointState &msg);
 
     bool checkEquality(int array[]);
 
@@ -76,17 +76,14 @@ class AllegroNodeGraspController {
 
     // Handles defined grasp types (std_msgs/String).
     ros::Subscriber grasp_type_sub;
-    ros::Subscriber next_state_sub;
-    ros::Subscriber tactile_sub;
     ros::Subscriber SpeedPer_sub;
     ros::Subscriber sensor_data_sub;
 
-    ros::Publisher current_state_pub;
     ros::Publisher desired_state_pub;
-    ros::Publisher stop_pub;
-    ros::Publisher stop_table_pub;
+    //ros::Publisher stop_pub;
+    //ros::Publisher stop_table_pub;
     ros::Publisher sensor_data_pub;
-    ros::Publisher wentback_pub;
+    //ros::Publisher wentback_pub;
 
 
     //boost::mutex *mutex;

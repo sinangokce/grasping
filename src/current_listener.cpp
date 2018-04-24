@@ -19,7 +19,7 @@ currentListener::currentListener() {
   current_joint_state.position.resize(DOF_JOINTS);
   current_joint_state.velocity.resize(DOF_JOINTS);
 
-  stop_sub = nh.subscribe(STOP_TOPIC, 1, &currentListener::stopCallback, this);
+  //stop_sub = nh.subscribe(STOP_TOPIC, 1, &currentListener::stopCallback, this);
   stop_table_sub = nh.subscribe(STOP_TABLE_TOPIC, 10, &currentListener::stopTableCallback, this);
   desired_grasp_type_sub = nh.subscribe(CURRENT_LISTENER_TOPIC, 1, &currentListener::currentListenerCallback, this);
   next_state_pub =nh.advertise<sensor_msgs::JointState>(NEXT_STATE_TOPIC, 1);
@@ -33,36 +33,14 @@ void currentListener::stopTableCallback(const grasping::stop_table &msg) {
   }
 }
 
-void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
+/*void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
   const std::string condition = msg->data;
 
 
   for (int i = 0; i < DOF_JOINTS; i++) 
     stop_table[i] = 0;
 
-//Simulated velocity parameter (keyboard)
-  /*if (condition.compare("one") == 0) {
-    speedPer = 1;
-  }
 
-  if (condition.compare("two") == 0) {
-    speedPer = 2;
-  }
-
-  if (condition.compare("five") == 0) {
-    speedPer = 5;
-  }
-
-  if (condition.compare("zero") == 0) {
-    speedPer = 0;
-  }*/
-
-
-  if (condition.compare("false") == 0) {
-    for (int i = 0; i < DOF_JOINTS; i++) 
-      stop_table[i] = 0;
-    back = 0;
-  }
 
 /*Simulated hand direction command (keyboard)
   if (condition.compare("open") == 0) {
@@ -204,9 +182,9 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
       stop_table[i] = 1;
     back = 0;
   }
-  */
+  
  
-}
+}*/
 
 void currentListener::currentListenerCallback(const sensor_msgs::JointState &msg) {
   tnow = ros::Time::now();
@@ -222,7 +200,7 @@ void currentListener::currentListenerCallback(const sensor_msgs::JointState &msg
     if (stop_table[i] == 1)
       velocity[i] = 0.0; 
     else 
-      velocity[i] = current_joint_state.velocity[i]*speedPer;
+      velocity[i] = current_joint_state.velocity[i];
   }
   
   if (back == 1){
