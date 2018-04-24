@@ -214,28 +214,20 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
 
-
-
   std_msgs::String stop_msg;
   std::stringstream stop_ss;
   
   condinit = 0;
   a = 1;
-  back = 0;
-  wentback_condition = 0;
 
   compareString(grasp_type);
 
- 
-
-  
+  moveToDesiredGraspType();
 
   if (condinit == 1) {
 
     if (first_run != 1) {
       if(wentback_condition == 0) {
-
-        ROS_INFO("adasda");
 
         reverse = 1;
         back = 1;
@@ -316,164 +308,38 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
 
   std_msgs::String stop_msg;
   std::stringstream stop_ss;
+  condinit = 1;
 
-  if (grasp_type.compare("open") == 0) {
-    if(wentback_condition == 1) {
-      for (int i = 0; i < DOF_JOINTS; i++) {
-        joint[i] = 1;
-        stop_table[i] = 1;
-      }
-    }
+  for(int i = 0; i < DOF_JOINTS; i++)
+    desiredisgreater[i] = 0;
 
-    else {
-      for (int i = 0; i < DOF_JOINTS; i++) {
-        joint[i] = 0;
-        stop_table[i] = 0;
-      }
-      reverse = 1;
-      back = 1;
-      startclosing = 0;
-      stop_ss << "open";
-      stop_msg.data = stop_ss.str();
-      stop_pub.publish(stop_msg);
-    }    
-  }
-
-  else if (grasp_type.compare("stop") == 0) {
-    for (int i = 0; i < DOF_JOINTS; i++) {
-      //joint[i] = 0;
-      stop_table[i] = 1;
-    }
-
-    reverse = 0;
-    back = 0;
-    startclosing = 0;
-
-    stop_ss << "stop";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-  }
-
-  else if (grasp_type.compare("close") == 0) {
-    for (int i = 0; i < DOF_JOINTS; i++) {
-      joint[i] = 0;
-      stop_table[i] = 0;
-    }
-
-    reverse = 0;
-    back = 0;
-    startclosing = 1;
-
-    stop_ss << "close";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-  }
-
-  else if (grasp_type.compare("home") == 0) {
-    condinit = 1;
-    //startclosing = 1;
-
-    for (int i = 0; i < DOF_JOINTS; i++)
-      desired_position[i] = home_pose[i]; 
-
-    stop_ss << "false";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-  }
-
-  else if (grasp_type.compare("power") == 0) {
-    condinit = 1;
-    
-    for (int i = 0; i < DOF_JOINTS; i++) {
+  if (grasp_type.compare("power") == 0) {
+    for (int i = 0; i < DOF_JOINTS; i++) 
       desired_position[i] = power[i];
-      desiredisgreater[i] = 0;
-    }
-    
-    stop_ss << "false";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
   }
 
   else if (grasp_type.compare("thumb") == 0) {
-    condinit = 1;
-
-    for (int i = 0; i < DOF_JOINTS; i++) {
+    for (int i = 0; i < DOF_JOINTS; i++) 
       desired_position[i] = thumb[i];
-      desiredisgreater[i] = 0;
-    }
-    
-    stop_ss << "false";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
   }
 
   else if (grasp_type.compare("pinch") == 0) {
-    condinit = 1;
-
-    for (int i = 0; i < DOF_JOINTS; i++) {
+    for (int i = 0; i < DOF_JOINTS; i++) 
       desired_position[i] = pinch[i];
-      desiredisgreater[i] = 0;
-    }
-  
-    stop_ss << "false";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
   }
 
   else if (grasp_type.compare("lateral") == 0) {
-    condinit = 1;
-
-    for (int i = 0; i < DOF_JOINTS; i++) {
+    for (int i = 0; i < DOF_JOINTS; i++) 
       desired_position[i] = lateral[i]; 
-      desiredisgreater[i] = 0;
-    }
-   
-    stop_ss << "false";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
   }
 
-  else if (grasp_type.compare("little_tactile") == 0) {
-    stop_ss << "little_tactile";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-    for (int i = 8; i < 12; i++) {
-      stop_table[i] = 1;
-    }
+  else if (grasp_type.compare("home") == 0) {
+    for (int i = 0; i < DOF_JOINTS; i++)
+      desired_position[i] = home_pose[i]; 
   }
+}
 
-  else if (grasp_type.compare("middle_tactile") == 0) {
-    stop_ss << "middle_tactile";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-    for (int i = 4; i < 8; i++) {
-      stop_table[i] = 1;
-    }
-  }
-
-  else if (grasp_type.compare("index_tactile") == 0) {
-    stop_ss << "index_tactile";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-    for (int i = 0; i < 4; i++) {
-      stop_table[i] = 1;
-    }
-  }
-
-  else if (grasp_type.compare("thumb_tactile") == 0) {
-    stop_ss << "thumb_tactile";
-    stop_msg.data = stop_ss.str();
-    stop_pub.publish(stop_msg);
-    for (int i = 12; i < 16; i++) {
-      stop_table[i] = 1;
-    }
-  }
-
-  else if (grasp_type.compare("wentback") == 0) {
-    condinit = 1;
-    wentback_condition = 1;
-    a = 0;
-  }
+void AllegroNodeGraspController::moveToDesiredGraspType() {
 
 }
 

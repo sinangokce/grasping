@@ -41,7 +41,7 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
     stop_table[i] = 0;
 
 //Simulated velocity parameter (keyboard)
-  if (condition.compare("one") == 0) {
+  /*if (condition.compare("one") == 0) {
     speedPer = 1;
   }
 
@@ -55,7 +55,7 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
 
   if (condition.compare("zero") == 0) {
     speedPer = 0;
-  }
+  }*/
 
 
   if (condition.compare("false") == 0) {
@@ -64,7 +64,7 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
     back = 0;
   }
 
-//Simulated hand direction command (keyboard)
+/*Simulated hand direction command (keyboard)
   if (condition.compare("open") == 0) {
     for (int i = 0; i < DOF_JOINTS; i++) 
       stop_table[i] = 0;
@@ -82,8 +82,9 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
       stop_table[i] = 0;
     back = 0;
   } 
+*/
 
-//Force sensor data
+/*Force sensor data
   if (condition.compare("thumb_up") == 0) {
     stop_table[15] = 1;
     back = 0;
@@ -176,10 +177,10 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
     stop_table[9] = 0;
     stop_table[8] = 0;
     back = 0;
-  }
+  }*/
 
 
-//Simulated force sensor data(keyboard)
+/*Simulated force sensor data(keyboard)
   if (condition.compare("little_tactile") == 0) {
     for (int i = 8; i < 12; i++) 
       stop_table[i] = 1;
@@ -203,6 +204,7 @@ void currentListener::stopCallback(const std_msgs::String::ConstPtr &msg) {
       stop_table[i] = 1;
     back = 0;
   }
+  */
  
 }
 

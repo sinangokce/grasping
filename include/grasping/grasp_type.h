@@ -54,6 +54,8 @@ class AllegroNodeGraspController {
 
     void compareString(std::string const &grasp_type);
 
+    void moveToDesiredGraspType();
+
     
 
     
