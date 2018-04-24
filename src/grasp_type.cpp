@@ -7,15 +7,15 @@
 #define DEGREES_TO_RADIANS(angle) ((angle) / 180.0 * M_PI)
 
 
-double velocity[DOF_JOINTS] = {0.0};
+//double velocity[DOF_JOINTS] = {0.0};
 int joint[16];
 int stop_table[16];
-int condinit;
+//int condinit;
 float speed_Percentage=1;
 float hand_Direction=0;
 double desired_position[DOF_JOINTS] = {0.0};
 double current_position[DOF_JOINTS] = {0.0};
-double previous_position[DOF_JOINTS] = {0.0};
+//double previous_position[DOF_JOINTS] = {0.0};
 double distance[DOF_JOINTS] = {0.0};
 
 int desiredisgreater[16];
@@ -76,8 +76,6 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
   }  
 
   fillStopTable(p2, sensor_stop);
-
-  //publishStopTableToCurrentListenerNode(stop_table);
 
 }
 
@@ -194,14 +192,12 @@ void AllegroNodeGraspController::fillStopTable(int *p2, int sensor_stop[]) {
 
 }
 
-
 void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg) {
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
 
   compareString(grasp_type);
   moveToDesiredGraspType();
-
 }
 
 void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
