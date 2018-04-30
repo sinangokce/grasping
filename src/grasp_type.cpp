@@ -21,6 +21,9 @@ double distance[DOF_JOINTS] = {0.0};
 int desiredisgreater[16];
 bool startclosing = true;
 
+bool first_run;
+bool separated;
+
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
   initControllerxx();
@@ -196,8 +199,19 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
 
+  std::cout<< first_run << std::endl;
+
   compareString(grasp_type);
-  moveToDesiredGraspType();
+
+  if(first_run)
+    moveToDesiredGraspType();
+  else if(!first_run) {
+    separateFingers();
+    moveToDesiredGraspType();
+  }
+
+  first_run = false;
+
 }
 
 void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
@@ -256,6 +270,53 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   }
 }
 
+void AllegroNodeGraspController::separateFingers(){
+
+  joint[1] = 0;
+  joint[5] = 0;
+  //joint[9] = 0;
+  //joint[14] = 0;
+
+  distance[1] =  separated_posiiton[0] - current_state.position[1];
+  distance[5] =  separated_posiiton[1] - current_state.position[5];
+  //distance[9] =  separated_posiiton[2] - current_state.position[9];
+  //distance[14] = separated_posiiton[3] - current_state.position[14];
+
+  current_state.velocity[1] = (distance[1]/3000);
+  current_state.velocity[5] = (distance[5]/3000);
+  //current_state.velocity[9] = (distance[9]/3000);
+  //current_state.velocity[14] = (distance[14]/3000);
+
+
+  separated = false;
+  
+  while(!separated) {
+    current_state.position[1] = current_state.position[1] + current_state.velocity[1]; 
+    current_state.position[5] = current_state.position[5] + current_state.velocity[5]; 
+    //current_state.position[9] = current_state.position[9] + current_state.velocity[9]; 
+    //current_state.position[14] = current_state.position[14] + current_state.velocity[14]; 
+
+
+    if (current_state.position[1] <= separated_posiiton[0]) 
+      joint[1] = 1;
+    if (current_state.position[5] <= separated_posiiton[1]) 
+      joint[5] = 1;
+    //if (current_state.position[9] <= separated_posiiton[2]) 
+      //joint[9] = 1;
+    //if (current_state.position[14] <= separated_posiiton[3]) 
+      //joint[14] = 1;
+
+    if(checkSeparate(joint)) {
+      separated = true;
+      break;
+    }
+
+    desired_state_pub.publish(current_state);
+    usleep(100);
+
+  }
+}
+
 void AllegroNodeGraspController::updateCurrentPosition() {
   
   for (int i = 0; i < (int)DOF_JOINTS; i++) {
@@ -286,6 +347,14 @@ void AllegroNodeGraspController::updateCurrentPosition() {
 
 }
 
+bool AllegroNodeGraspController::checkSeparate(int array[]) {
+  
+  if(array[1] != 1 || array[5] != 1 /*|| array[9] != 1 || array[14] != 1*/)
+    return false;
+  
+  return true;
+}
+
 bool AllegroNodeGraspController::checkEquality(int array[]) {
   for (int i = 0; i < DOF_JOINTS; i++) {
     if(array[i] != 1)
@@ -309,6 +378,8 @@ void AllegroNodeGraspController::initControllerxx() {
   
   desired_state.position.resize(DOF_JOINTS);
   desired_state.velocity.resize(DOF_JOINTS);
+
+  first_run = true;
 }
 
 void AllegroNodeGraspController::doIt() {

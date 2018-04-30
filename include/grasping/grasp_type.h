@@ -53,6 +53,8 @@ class AllegroNodeGraspController {
 
     void moveToDesiredGraspType();
 
+    void separateFingers();
+
     void updateCurrentPosition();
 
 
@@ -62,6 +64,7 @@ class AllegroNodeGraspController {
 
 
     //void nextStateCallback(const sensor_msgs::JointState &msg);
+    bool checkSeparate(int array[]);
 
     bool checkEquality(int array[]);
 
@@ -154,6 +157,11 @@ class AllegroNodeGraspController {
             0.0, 0.78, 1.09, 0.88,  -0.19, 0.82, 1.09, 0.80,
             0.0, 0.0,  0.0,  0.0,    1.35, 0.23, 0.70, 0.55                             
         }; 
+
+    double separated_posiiton[4] =
+        {
+           0.60, 0.60, 0.60, 0.30                    
+        };     
 
   double desired_position[DOF_JOINTS] = {0.0};
 };
