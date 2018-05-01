@@ -1,7 +1,6 @@
 #ifndef PROJECT_GRASP_TYPE_H
 #define PROJECT_GRASP_TYPE_H
 
-//#include "allegro_node.h"
 #include <iostream>
 #include <vector>
 
@@ -103,14 +102,6 @@ class AllegroNodeGraspController {
             0.0, -10.0, 45.0, 45.0,  0.0, -10.0, 45.0, 45.0,
             5.0, -5.0, 50.0, 45.0, 60.0, 25.0, 15.0, 45.0
         };*/
-
-    double home_pose_2[16] =
-        {
-            // Default (HOME) position (degrees), set at system start if
-            // no 'initial_position.yaml' parameter is loaded.
-            0.0,  -0.17, 0.79, 0.79,  0.0, -0.17, 0.79, 0.79,
-            0.09, -0.09, 0.87, 0.79,  1.05, 0.44, 0.26, 0.79
-        }; 
 
     double home_pose[16] =
         {
