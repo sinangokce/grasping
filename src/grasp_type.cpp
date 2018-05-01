@@ -235,7 +235,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   scaleSamplesBetween0andPi(samples);
   sinusoidalVelocity(scaledSamples);
 
-  if(first_run)
+  /*if(first_run)
     moveToDesiredGraspType();
   else if(!first_run) {
     //openHand();
@@ -243,7 +243,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     moveToDesiredGraspType();
   }
 
-  first_run = false;
+  first_run = false;*/
 }
 
 void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
@@ -340,9 +340,9 @@ void AllegroNodeGraspController::sampling() {
       joint_samples.push_back(updatedPosition[i]);
       updatedPosition[i] = current_state.position[i] + (range[i]/sampling_rate);
 
-      if (desiredisgreater[i] == 1 && current_state.position[i] >= desired_position[i]) 
+      if (desiredisgreater[i] == 1 && updatedPosition[i] >= desired_position[i]) 
         break;
-      else if (desiredisgreater[i] == 0 && current_state.position[i] <= desired_position[i]) 
+      else if (desiredisgreater[i] == 0 && updatedPosition[i] <= desired_position[i]) 
         break;
     }
     samples.push_back(joint_samples);
