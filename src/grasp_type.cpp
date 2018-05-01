@@ -9,6 +9,7 @@
 int joint[16];
 int stop_table[16];
 int desiredisgreater[16];
+int acc;
 
 float speed_Percentage=1;
 float hand_Direction=0;
@@ -16,6 +17,11 @@ float hand_Direction=0;
 double desired_position[DOF_JOINTS] = {0.0};
 double current_position[DOF_JOINTS] = {0.0};
 double distance[DOF_JOINTS] = {0.0};
+double dt;
+double tnowsec; 
+double tnowsec_squared; 
+double tstartsec;
+double tstartsec_squared;
 
 bool startclosing = true;
 bool first_run;
@@ -35,6 +41,8 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
 
   sensor_data_pub = nh.advertise<grasping::sensor_data>(SENSOR_DATA_TOPIC, 10); //plot
 
+  acc_sub = nh.subscribe("allegroHand_0/stop_topic", 1, &AllegroNodeGraspController::accCallback, this);
+
   //next_state_sub = nh.subscribe(NEXT_STATE_TOPIC, 1, &AllegroNodeGraspController::nextStateCallback, this);
 
   //current_state_pub = nh.advertise<sensor_msgs::JointState>(CURRENT_LISTENER_TOPIC, 1);
@@ -49,6 +57,19 @@ AllegroNodeGraspController::AllegroNodeGraspController() {
 void AllegroNodeGraspController::speedPerCallback(const handtracker::spper &msg) {
   speed_Percentage = msg.sPer;
   hand_Direction = msg.dir;
+}
+
+void AllegroNodeGraspController::accCallback(const std_msgs::String::ConstPtr &msg) {
+
+  const std::string acc_message = msg->data;
+  if(acc_message.compare("Acc2") == 0){
+    acc = 2;
+  }
+
+  if(acc_message.compare("Acc5") == 0)
+    acc = 5;
+
+  ROS_INFO("acc = %d", acc);
 }
 
 void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
@@ -198,10 +219,16 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
   compareString(grasp_type);
 
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    joint[i] = 0;
+    stop_table[i] = 0;
+  }
+
   if(first_run)
     moveToDesiredGraspType();
   else if(!first_run) {
-    separateFingers();
+    //openHand();
+    separateFingers();//to avoid collisions
     moveToDesiredGraspType();
   }
 
@@ -239,6 +266,7 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
     for (int i = 0; i < DOF_JOINTS; i++)
       desired_position[i] = home_pose[i]; 
   }
+
 }
 
 void AllegroNodeGraspController::moveToDesiredGraspType() {
@@ -269,27 +297,20 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
 }
 
 void AllegroNodeGraspController::separateFingers(){
-
-  /*for (int i = 0; i < DOF_JOINTS; i++) {
-    joint[i] = 0;
-    stop_table[i] = 0;
-  }*/
-
-  joint[1] = 0;
-  //joint[5] = 0;
-  //joint[9] = 0;
-  joint[14] = 0;
+  joint[1]  = 0; //INDEX
+  joint[5]  = 0; //MIDDLE
+  joint[9]  = 0; //LITTLE
+  joint[14] = 0; //THUMB
 
   distance[1] =  separated_posiiton[0] - current_state.position[1];
-  //distance[5] =  separated_posiiton[1] - current_state.position[5];
-  //distance[9] =  separated_posiiton[2] - current_state.position[9];
+  distance[5] =  separated_posiiton[1] - current_state.position[5];
+  distance[9] =  separated_posiiton[2] - current_state.position[9];
   distance[14] = separated_posiiton[3] - current_state.position[14];
 
   current_state.velocity[1] = (distance[1]/3000);
-  //current_state.velocity[5] = (distance[5]/3000);
-  //current_state.velocity[9] = (distance[9]/3000);
+  current_state.velocity[5] = (distance[5]/3000);
+  current_state.velocity[9] = (distance[9]/3000);
   current_state.velocity[14] = (distance[14]/3000);
-
 
   separated = false;
   
@@ -297,17 +318,20 @@ void AllegroNodeGraspController::separateFingers(){
 
   while(!separated) {
     current_state.position[1] = current_state.position[1] + current_state.velocity[1]; 
-    //current_state.position[5] = current_state.position[5] + current_state.velocity[5]; 
-    //current_state.position[9] = current_state.position[9] + current_state.velocity[9]; 
+    current_state.position[5] = current_state.position[5] + current_state.velocity[5]; 
+    current_state.position[9] = current_state.position[9] + current_state.velocity[9]; 
     current_state.position[14] = current_state.position[14] + current_state.velocity[14]; 
 
 
     if (current_state.position[1] <= separated_posiiton[0]) 
       joint[1] = 1;
-    //if (current_state.position[5] <= separated_posiiton[1]) 
-      //joint[5] = 1;
-    //if (current_state.position[9] <= separated_posiiton[2]) 
-      //joint[9] = 1;
+
+    if (current_state.position[5] <= separated_posiiton[1]) 
+      joint[5] = 1;
+
+    if (current_state.position[9] <= separated_posiiton[1]) 
+      joint[9] = 1;
+
     if (current_state.position[14] <= separated_posiiton[3]) 
       joint[14] = 1;
 
@@ -320,7 +344,6 @@ void AllegroNodeGraspController::separateFingers(){
 
     ros::spinOnce();
     rate.sleep();
-
   }
 }
 
@@ -354,9 +377,67 @@ void AllegroNodeGraspController::updateCurrentPosition() {
 
 }
 
+void AllegroNodeGraspController::openHand() {
+
+  int negative_table[16];
+  int openHandPosition[16];
+
+  for(int i = 0; i<DOF_JOINTS; i++) {
+    if (current_state.position[i] <= 0) 
+      negative_table[i] = 1;
+    else 
+      negative_table[i] = 0;
+  }
+
+  for(int i = 0; i<DOF_JOINTS; i++) {
+    if(negative_table[i] == 1)
+      openHandPosition[i] = current_state.position[i] + 0.20;
+    else
+      openHandPosition[i] = current_state.position[i] - 0.20;
+  }
+ 
+  ros::Rate rate(10000);
+  while(true) {
+    tnow = ros::Time::now();
+    tnowsec = tnow.toSec();
+    tnowsec_squared = pow(tnowsec,2.0);
+    //dt = 1e-9 * (tnowsec_squared - tstartsec_squared).nsec; 
+    dt = 1e-9 * (tnowsec_squared - tstartsec_squared);
+    //std::cout << dt << std::endl;
+
+    tstart = tnow;
+    tstartsec = tstart.toSec();
+    tstartsec_squared = pow(tstartsec,2.0);
+
+
+    for (int i = 0; i < (int)DOF_JOINTS; i++) {
+      if(negative_table[i] == 1) {
+        current_state.position[i] = current_state.position[i] + (acc * dt/2); 
+        //std::cout <<  current_state.position[i] << std::endl;
+      }
+      else
+        current_state.position[i] = current_state.position[i] - (acc * dt/2);
+    }
+
+    for (int i = 0; i < (int)DOF_JOINTS; i++) {
+      if (negative_table[i] == 1 && current_state.position[i] >= desired_position[i]) 
+        joint[i] = 1;
+      else if (negative_table[i] == 0 && current_state.position[i] <= desired_position[i]) 
+        joint[i] = 1;
+    } 
+
+    if(checkEquality(joint))
+      break;
+
+    desired_state_pub.publish(current_state);
+    rate.sleep();
+  }
+  
+}
+
 bool AllegroNodeGraspController::checkSeparate(int array[]) {
   
-  if(array[1] != 1 || /*array[5] != 1 || array[9] != 1 ||*/ array[14] != 1)
+  if(array[1] != 1 || array[5] != 1 || array[9] != 1 || array[14] != 1)
     return false;
   
   return true;

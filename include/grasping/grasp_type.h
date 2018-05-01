@@ -11,6 +11,7 @@
 #include "glove_tekscan_ros_wrapper/LasaDataStreamWrapper.h"
 #include "grasping/stop_table.h"
 #include "grasping/sensor_data.h" //plot
+#include <math.h> 
 
 
 #include <string>
@@ -27,6 +28,8 @@ const std::string SENSOR_DATA_TOPIC = "allegroHand_0/sensor_data_topic";//plot
 const std::string CURRENT_LISTENER_TOPIC = "allegroHand_0/current_listener";
 const std::string NEXT_STATE_TOPIC = "allegroHand_0/next_state";
 
+
+
 class AllegroNodeGraspController {
 
  public:
@@ -34,6 +37,7 @@ class AllegroNodeGraspController {
     AllegroNodeGraspController();
 
     void speedPerCallback(const handtracker::spper &msg);
+    void accCallback(const std_msgs::String::ConstPtr &msg);
 
 
 // Functions for treating the data coming from the sensors
@@ -52,14 +56,11 @@ class AllegroNodeGraspController {
 
     void moveToDesiredGraspType();
 
+    void openHand();
+
     void separateFingers();
 
     void updateCurrentPosition();
-
-
-    
-
-    
 
 
     //void nextStateCallback(const sensor_msgs::JointState &msg);
@@ -80,6 +81,7 @@ class AllegroNodeGraspController {
     ros::Subscriber grasp_type_sub;
     ros::Subscriber SpeedPer_sub;
     ros::Subscriber sensor_data_sub;
+    ros::Subscriber acc_sub;
 
     ros::Publisher desired_state_pub;
     //ros::Publisher stop_pub;
@@ -93,6 +95,11 @@ class AllegroNodeGraspController {
     sensor_msgs::JointState desired_state;
     sensor_msgs::JointState current_state;
     handtracker::spper speedMsg;
+
+    ros::Time tnow;
+    ros::Time tstart;
+    ros::Time tnow_squared;
+    ros::Time tstart_squared;
 
     
     /*double home_pose[16] =
