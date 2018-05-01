@@ -12,6 +12,7 @@
 #include "grasping/stop_table.h"
 #include "grasping/sensor_data.h" //plot
 #include <math.h> 
+#include <stdlib.h>
 
 
 #include <string>
@@ -57,6 +58,12 @@ class AllegroNodeGraspController {
     void moveToDesiredGraspType();
 
     void openHand();
+
+    void sampling();
+
+    void scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples);
+
+    void sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples);
 
     void separateFingers();
 

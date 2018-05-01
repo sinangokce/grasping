@@ -10,6 +10,8 @@ int joint[16];
 int stop_table[16];
 int desiredisgreater[16];
 int acc;
+int sampling_rate = 3000;
+
 
 float speed_Percentage=1;
 float hand_Direction=0;
@@ -26,6 +28,11 @@ double tstartsec_squared;
 bool startclosing = true;
 bool first_run;
 bool separated;
+
+std::vector< std::vector<double> > samples;
+std::vector< std::vector<double> > scaledSamples;
+double jointMaxPositions[DOF_JOINTS];
+double jointMinPositions[DOF_JOINTS];
 
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
@@ -102,7 +109,7 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
 
 void AllegroNodeGraspController::mapping(float *p, const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
 
-  //THUMB
+//THUMB
   *p     = average((msg.ring2_f[10] + msg.ring2_f[11] + msg.pinky2_f[8] + msg.ring2_s[9] + msg.ring2_s[10] + msg.ring2_s[11]),  6);
   *(p+1) = average((msg.ring3_f[4]+msg.ring3_f[5]+msg.ring3_f[6] + msg.index1_s[9]+msg.index1_s[10]+msg.index1_s[11] + msg.middle3_s[7] + msg.ring3_s[0]+msg.ring3_s[1]+msg.ring3_s[2]+msg.ring3_s[4]+msg.ring3_s[5]), 12);
 
@@ -224,6 +231,10 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     stop_table[i] = 0;
   }
 
+  sampling();
+  scaleSamplesBetween0andPi(samples);
+  sinusoidalVelocity(scaledSamples);
+
   if(first_run)
     moveToDesiredGraspType();
   else if(!first_run) {
@@ -296,6 +307,80 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   }
 }
 
+void AllegroNodeGraspController::sampling() {
+  double range[16];
+  double updatedPosition[DOF_JOINTS];
+  
+  
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    range[i] = desired_position[i] - current_state.position[i];
+  }
+
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    if(current_state.position[i] <= desired_position[i]) {
+      jointMinPositions[i] = current_state.position[i]; //min
+      jointMaxPositions[i] = desired_position[i]; //max
+    }
+    else {
+      jointMaxPositions[i] = current_state.position[i]; 
+      jointMinPositions[i] = desired_position[i];
+    }
+  }
+
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    if (current_state.position[i] <= desired_position[i]) 
+      desiredisgreater[i] = 1;
+    else 
+      desiredisgreater[i] = 0;
+  }
+
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    std::vector<double> joint_samples;
+    while(true) {
+      joint_samples.push_back(updatedPosition[i]);
+      updatedPosition[i] = current_state.position[i] + (range[i]/sampling_rate);
+
+      if (desiredisgreater[i] == 1 && current_state.position[i] >= desired_position[i]) 
+        break;
+      else if (desiredisgreater[i] == 0 && current_state.position[i] <= desired_position[i]) 
+        break;
+    }
+    samples.push_back(joint_samples);
+    joint_samples.clear();
+  }
+}
+
+void AllegroNodeGraspController::scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples) {
+
+  
+  double scaledSample;
+
+  for (int i = 0; i < samples.size(); i++) {
+    std::vector<double> jointScaledSamples;
+    for (int j = 0; j < samples[i].size(); j++) {
+      scaledSample = M_PI * (samples[i][j] - jointMinPositions[i]) / (jointMaxPositions[i]-jointMinPositions[i]) ;
+      jointScaledSamples.push_back(scaledSample);
+    }
+    scaledSamples.push_back(jointScaledSamples);
+    jointScaledSamples.clear();
+  }
+}
+
+void AllegroNodeGraspController::sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples) {
+
+  ros::Rate rate(10000);
+  for (int i = 0; i < scaledSamples.size(); i++) {
+    for (int j = 0; j < scaledSamples[i].size(); j++) {
+      current_state.position[i] = current_state.position[i] + sin(scaledSamples[i][j]);
+      desired_state_pub.publish(current_state);
+
+      ros::spinOnce();
+      rate.sleep();
+    }
+  }
+  
+}
+
 void AllegroNodeGraspController::separateFingers(){
   joint[1]  = 0; //INDEX
   joint[5]  = 0; //MIDDLE
@@ -349,6 +434,8 @@ void AllegroNodeGraspController::separateFingers(){
 
 void AllegroNodeGraspController::updateCurrentPosition() {
   
+
+
   for (int i = 0; i < (int)DOF_JOINTS; i++) {
     if (stop_table[i] == 1)
       current_state.velocity[i] = 0.0; 
