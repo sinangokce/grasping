@@ -28,9 +28,6 @@ double tstartsec_squared;
 bool startclosing = true;
 bool first_run;
 bool separated;
-
-std::vector< std::vector<double> > samples;
-std::vector< std::vector<double> > scaledSamples;
 double jointMaxPositions[DOF_JOINTS];
 double jointMinPositions[DOF_JOINTS];
 
@@ -231,9 +228,10 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     stop_table[i] = 0;
   }
 
-  sampling();
-  scaleSamplesBetween0andPi(samples);
-  sinusoidalVelocity(scaledSamples);
+  sinusoidalPositionControlling();
+  //sampling();
+  //scaleSamplesBetween0andPi(samples);
+  //sinusoidalVelocity(scaledSamples);
 
   /*if(first_run)
     moveToDesiredGraspType();
@@ -280,6 +278,22 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
 
 }
 
+void AllegroNodeGraspController::sinusoidalPositionControlling() {
+
+
+  double samples[sampling_rate+1];
+  double *ptrSamples[DOF_JOINTS];
+  for(int i = 0; i < DOF_JOINTS; i++) {
+
+  }
+
+  
+  double *ptrSamples = samples[0];
+  //sampling(ptrSamples, DOF_JOINTS, (sampling_rate+1));
+
+
+}
+
 void AllegroNodeGraspController::moveToDesiredGraspType() {
 
   for (int i = 0; i < DOF_JOINTS; i++) {
@@ -307,50 +321,49 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   }
 }
 
-void AllegroNodeGraspController::sampling() {
+/*void AllegroNodeGraspController::sampling(double ptrSamples[], int rows, int col) {
   double range[16];
   double updatedPosition[DOF_JOINTS];
-  
+  bool op;
   
   for (int i = 0; i < DOF_JOINTS; i++) {
+    updatedPosition[i] = current_state.position[i];
     range[i] = desired_position[i] - current_state.position[i];
   }
 
   for (int i = 0; i < DOF_JOINTS; i++) {
     if(current_state.position[i] <= desired_position[i]) {
+      desiredisgreater[i] = 1;
       jointMinPositions[i] = current_state.position[i]; //min
       jointMaxPositions[i] = desired_position[i]; //max
     }
     else {
+      desiredisgreater[i] = 0;
       jointMaxPositions[i] = current_state.position[i]; 
       jointMinPositions[i] = desired_position[i];
     }
   }
 
-  for (int i = 0; i < DOF_JOINTS; i++) {
-    if (current_state.position[i] <= desired_position[i]) 
-      desiredisgreater[i] = 1;
-    else 
-      desiredisgreater[i] = 0;
-  }
+  for (int i = 0; i < (rows*col); i++) {
+    op = true;
+    while(op) {
+      samples[i] = updatedPosition[i % rows];
 
-  for (int i = 0; i < DOF_JOINTS; i++) {
-    std::vector<double> joint_samples;
-    while(true) {
-      joint_samples.push_back(updatedPosition[i]);
-      updatedPosition[i] = current_state.position[i] + (range[i]/sampling_rate);
+      if (desiredisgreater[i % rows] == 1 && samples[i] >= desired_position[i % rows] ) {
+        op = false;
+        break;
+      }
+      else if (desiredisgreater[i % rows]  == 0 && samples[i] <= desired_position[i % rows] ) {
+        op = true;
+        break;
+      }
 
-      if (desiredisgreater[i] == 1 && updatedPosition[i] >= desired_position[i]) 
-        break;
-      else if (desiredisgreater[i] == 0 && updatedPosition[i] <= desired_position[i]) 
-        break;
+      updatedPosition[i % rows] = updatedPosition[i % rows] + (range[i % rows]/sampling_rate); 
     }
-    samples.push_back(joint_samples);
-    joint_samples.clear();
   }
-}
+}*/
 
-void AllegroNodeGraspController::scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples) {
+/*void AllegroNodeGraspController::scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples) {
 
   
   double scaledSample;
@@ -364,9 +377,9 @@ void AllegroNodeGraspController::scaleSamplesBetween0andPi(std::vector< std::vec
     scaledSamples.push_back(jointScaledSamples);
     jointScaledSamples.clear();
   }
-}
+}*/
 
-void AllegroNodeGraspController::sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples) {
+/*void AllegroNodeGraspController::sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples) {
 
   ros::Rate rate(10000);
   for (int i = 0; i < scaledSamples.size(); i++) {
@@ -379,7 +392,7 @@ void AllegroNodeGraspController::sinusoidalVelocity(std::vector< std::vector<dou
     }
   }
   
-}
+}*/
 
 void AllegroNodeGraspController::separateFingers(){
   joint[1]  = 0; //INDEX

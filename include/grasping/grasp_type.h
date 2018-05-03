@@ -55,11 +55,15 @@ class AllegroNodeGraspController {
 
     void compareString(std::string const &grasp_type);
 
+    void sinusoidalPositionControlling();
+
+    void sampling(double ptrSamples[], int rows, int col);
+
     void moveToDesiredGraspType();
 
     void openHand();
 
-    void sampling();
+    
 
     void scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples);
 
