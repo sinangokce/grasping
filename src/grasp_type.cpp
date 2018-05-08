@@ -228,7 +228,8 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     stop_table[i] = 0;
   }
 
-  sinusoidalPositionControlling();
+  //std::cout << "smootha giricem" << std::endl;
+  smoothPositionControlling();
   //sampling();
   //scaleSamplesBetween0andPi(samples);
   //sinusoidalVelocity(scaledSamples);
@@ -278,20 +279,49 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
 
 }
 
-void AllegroNodeGraspController::sinusoidalPositionControlling() {
+void AllegroNodeGraspController::smoothPositionControlling() {
 
 
-  double samples[sampling_rate+1];
-  double *ptrSamples[DOF_JOINTS];
-  for(int i = 0; i < DOF_JOINTS; i++) {
-
-  }
+  double time_interval[2] = {-10.0 , 10.0};
+  double time_increment = (time_interval[1]-time_interval[0])/sampling_rate;
+  double time_samples[sampling_rate+1];
+  time_samples[0] = time_interval[0];
+  for(int i =0; i<sampling_rate; i++)
+    time_samples[i+1] = time_samples[i] + time_increment;
 
   
-  double *ptrSamples = samples[0];
-  //sampling(ptrSamples, DOF_JOINTS, (sampling_rate+1));
+  double sigmoid_samples[DOF_JOINTS][sampling_rate+1];
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    distance[i] = desired_position[i] - current_state.position[i];
+  }
 
+  for(int i = 0; i<DOF_JOINTS; i++)
+    for(int j = 0; j<sampling_rate+1; j++)
+      sigmoid_samples[i][j] = sigmoidFunction(current_state.position[i], distance[i], 1.0, time_samples[j]);
 
+  //std::cout << "smoothtayim" << std::endl;  
+  ros::Rate rate(1000);  
+  int j = 0;
+  while(j<sampling_rate+1) {
+    std::cout << sampling_rate << std::endl;
+    for(int i = 0; i<DOF_JOINTS; i++) {
+      current_state.position[i] =  sigmoid_samples[i][j];
+    }
+    desired_state_pub.publish(current_state);
+    /*for(int i = 0; i<DOF_JOINTS; i++)
+      std::cout << current_state.position[i] << std::endl;*/
+
+    std::cout << "donuyorum" << std::endl;
+    j = j+1;
+    ros::spinOnce();
+    rate.sleep();
+  }
+
+}
+
+double AllegroNodeGraspController::sigmoidFunction(double initial_position, double distance, double velocity, double time_sample) {
+  double y = initial_position + (distance/(1+exp((-velocity)*time_sample)));
+  return y;
 }
 
 void AllegroNodeGraspController::moveToDesiredGraspType() {

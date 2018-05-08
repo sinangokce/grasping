@@ -55,7 +55,9 @@ class AllegroNodeGraspController {
 
     void compareString(std::string const &grasp_type);
 
-    void sinusoidalPositionControlling();
+    void smoothPositionControlling();
+
+    double sigmoidFunction(double initial_position,double distance, double velocity, double time_sample);
 
     void sampling(double ptrSamples[], int rows, int col);
 
