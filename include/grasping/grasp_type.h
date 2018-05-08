@@ -55,15 +55,15 @@ class AllegroNodeGraspController {
 
     void compareString(std::string const &grasp_type);
 
-    void smoothPositionControlling();
+    void smoothPositionControlling(double final_position[]);
 
     double sigmoidFunction(double initial_position,double distance, double velocity, double time_sample);
 
-    void sampling(double ptrSamples[], int rows, int col);
+    //void sampling(double ptrSamples[], int rows, int col);
 
     void moveToDesiredGraspType();
 
-    void openHand();
+    //void openHand();
 
     
 
@@ -73,13 +73,13 @@ class AllegroNodeGraspController {
 
     void separateFingers();
 
-    void updateCurrentPosition();
+    //void updateCurrentPosition();
 
 
     //void nextStateCallback(const sensor_msgs::JointState &msg);
-    bool checkSeparate(int array[]);
+    //bool checkSeparate(int array[]);
 
-    bool checkEquality(int array[]);
+    //bool checkEquality(int array[]);
 
     float average(int a, int b);
 
@@ -169,10 +169,10 @@ class AllegroNodeGraspController {
             0.0, 0.0,  0.0,  0.0,    1.35, 0.23, 0.70, 0.55                             
         }; 
 
-    double separated_posiiton[4] =
+    /*/double separated_posiiton[4] =
         {
            0.60, 0.60, 0.60, 0.30                    
-        };     
+        };*/     
 
   double desired_position[DOF_JOINTS] = {0.0};
 };
