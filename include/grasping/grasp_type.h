@@ -57,7 +57,7 @@ class AllegroNodeGraspController {
 
     void smoothPositionControlling(double final_position[]);
 
-    double sigmoidFunction(double initial_position,double distance, double velocity, double time_sample);
+    double sigmoidFunction(double initial_position,double distance, /*double velocity,*/ double time_sample);
 
     //void sampling(double ptrSamples[], int rows, int col);
 
@@ -67,11 +67,26 @@ class AllegroNodeGraspController {
 
     
 
-    void scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples);
+    //void scaleSamplesBetween0andPi(std::vector< std::vector<double> >samples);
 
-    void sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples);
+    //void sinusoidalVelocity(std::vector< std::vector<double> >scaledSamples);
 
     void separateFingers();
+
+    void separateSmart();
+
+    void findVectors(double *ptrVect_a, double *ptrVect_height);
+
+    double euclideanNorm(double vector[]);
+
+    double semiPerimeter(double norm_a, double norm_b, double norm_c); 
+       
+    double triangleSurface(double s, double norm_a, double norm_b, double norm_c);
+
+    //double triangleHeight(double area, double norm_b); 
+
+    //double angleBetweenAandB(double norm_a, double norm_b, double norm_c);
+   
 
     //void updateCurrentPosition();
 

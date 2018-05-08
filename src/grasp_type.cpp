@@ -9,7 +9,7 @@
 int joint[16];
 int stop_table[16];
 int desiredisgreater[16];
-int acc;
+int velocity = 1;
 int sampling_rate = 3000;
 
 
@@ -18,6 +18,7 @@ float hand_Direction=0;
 
 double desired_position[DOF_JOINTS] = {0.0};
 double current_position[DOF_JOINTS] = {0.0};
+double initial_position[DOF_JOINTS] = {0.0};
 double distance[DOF_JOINTS] = {0.0};
 //double dt;
 //double tnowsec; 
@@ -27,9 +28,9 @@ double distance[DOF_JOINTS] = {0.0};
 
 bool startclosing = true;
 bool first_run;
-bool separated;
-double jointMaxPositions[DOF_JOINTS];
-double jointMinPositions[DOF_JOINTS];
+//bool separated;
+//double jointMaxPositions[DOF_JOINTS];
+//double jointMinPositions[DOF_JOINTS];
 
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
@@ -67,13 +68,13 @@ void AllegroNodeGraspController::accCallback(const std_msgs::String::ConstPtr &m
 
   const std::string acc_message = msg->data;
   if(acc_message.compare("Acc2") == 0){
-    acc = 2;
+    velocity = 2;
   }
 
   if(acc_message.compare("Acc5") == 0)
-    acc = 5;
+    velocity = 5;
 
-  ROS_INFO("acc = %d", acc);
+  //ROS_INFO("vel = %d", velocity);
 }
 
 void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrapper::LasaDataStreamWrapper &msg) {
@@ -221,6 +222,18 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
 
+  /*if (first_run)
+    for (int i = 0; i < DOF_JOINTS; ++i)
+    {
+      initial_position[i] = 0;
+    }
+  else   */                 
+    for (int i = 0; i < DOF_JOINTS; ++i)
+    {
+      initial_position[i] = desired_position[i];
+    } 
+      
+
   compareString(grasp_type);
 
   for (int i = 0; i < DOF_JOINTS; i++) {
@@ -232,8 +245,9 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     moveToDesiredGraspType();
   else if(!first_run) {
     //openHand();
-    separateFingers();//to avoid collisions
-    moveToDesiredGraspType();
+    //separateFingers();//to avoid collisions
+    separateSmart();
+    //moveToDesiredGraspType();
   }
 
   first_run = false;
@@ -270,7 +284,6 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
     for (int i = 0; i < DOF_JOINTS; i++)
       desired_position[i] = home_pose[i]; 
   }
-
 }
 
 void AllegroNodeGraspController::moveToDesiredGraspType() {
@@ -286,36 +299,147 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
 void AllegroNodeGraspController::separateFingers(){
 
   double separated_position[DOF_JOINTS]; 
-  /*for(int i = 0; i<DOF_JOINTS; i++)
-    std::cout << c[i] << std::endl;*/
 
   for(int i = 0; i<DOF_JOINTS; i++) {
     if(i == 1 || i == 5 || i == 9) { //1 INDEX       5 MIDDLE       9 LITTLE      
-      std::cout << i << std::endl;
       separated_position[i] = 0.60;
       joint[i] = 0;
     }
     else {
-      std::cout << "kalanlar" << i << std::endl;
       separated_position[i] = current_state.position[i];
     }
     if(i == 14) { //14 THUMB
-      std::cout << "14 --->" << i << std::endl;
       separated_position[i] = 0.30;
       joint[i] = 0;
     }
     
   }
 
-  for(int i = 0; i<DOF_JOINTS; i++)
-    std::cout << separated_position[i] << std::endl;
-
   smoothPositionControlling(separated_position);
 }
 
+void AllegroNodeGraspController::separateSmart() {
+  double vector_a[DOF_JOINTS];
+  double vector_height[DOF_JOINTS];
+  double unity_vector_a[DOF_JOINTS];
+  double unity_vector_height[DOF_JOINTS];
+
+  double *ptrVector_a, *ptrVector_height;
+  ptrVector_a = vector_a;
+  ptrVector_height = vector_height;
+  findVectors(ptrVector_a, ptrVector_height);
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    std::cout << "vector height " << vector_height[i] << std::endl;
+  }
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    unity_vector_a[i] = vector_a[i]/euclideanNorm(vector_a);
+    unity_vector_height[i] = vector_height[i]/euclideanNorm(vector_height);
+  }
+
+
+
+
+
+
+}
+
+void AllegroNodeGraspController::findVectors(double *ptrVect_a, double *ptrVect_height) {
+  double vect_a[DOF_JOINTS];
+  double vect_b[DOF_JOINTS];
+  double vect_c[DOF_JOINTS];
+  double vect_k[DOF_JOINTS];
+  
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    *(ptrVect_a + i) = current_state.position[i] - initial_position[i];
+    vect_a[i] = *(ptrVect_a + i);
+    vect_b[i] = desired_position[i] - initial_position[i];
+    vect_c[i] = desired_position[i] - current_state.position[i];
+  }
+
+  double norm_a = euclideanNorm(vect_a);
+  double norm_b = euclideanNorm(vect_b);
+  double norm_c = euclideanNorm(vect_c);
+
+  double s = semiPerimeter(norm_a, norm_b, norm_c); //semiperimeter
+  double area = triangleSurface(s, norm_a, norm_b, norm_c);
+  double height = 2*area/norm_b;
+
+  double norm_k = sqrt(pow(norm_a,2)-pow(height,2));
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    vect_k[i] = norm_k * (vect_b[i]/norm_b);
+  }
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    *(ptrVect_height + i) = vect_k[i] - vect_a[i];
+  }
+
+  /*for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    std::cout << "vector height " << vector_height[i] << std::endl;
+  }*/
+
+
+}
+
+double AllegroNodeGraspController::euclideanNorm(double vector[]) {
+
+  double norm = 0.0;
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    norm += pow(vector[i],2);
+  }
+  norm = sqrt(norm);
+  return norm;
+}
+
+double AllegroNodeGraspController::semiPerimeter(double norm_a, double norm_b, double norm_c) {
+
+  double s;
+  s = (norm_a + norm_b + norm_c)/2;
+  return s;
+}
+
+double AllegroNodeGraspController::triangleSurface(double s, double norm_a, double norm_b, double norm_c) {
+  double area;
+  area = s*(s-norm_a)*(s-norm_b)*(s-norm_c);
+  area = sqrt(area);
+  return area;
+}
+
+/*double AllegroNodeGraspController::triangleHeight(double area, double norm_b) {
+  double height;
+  height = 2*area/norm_b;
+  return height;
+}*/
+
+/*double angleBetweenAandB(double norm_a, double norm_b, double norm_c) {
+  double angle;
+  norm_a = pow(norm_a,2);
+  norm_b = pow(norm_b,2);
+  norm_c = pow(norm_c,2);
+  angle = acos((pow(norm_a,2) + pow(norm_b,2) + pow(norm_c,2))/(2*norm_a*norm_b));
+  return angle;
+}*/
+
+
+
+
+
 void AllegroNodeGraspController::smoothPositionControlling(double final_position[]) {
 
+  /*for (int i = 0; i<DOF_JOINTS; i++)
+    std::cout << final_position[i] << std::endl;*/
+
   double time_interval[2] = {-5.0 , 5.0};
+  //sampling_rate = sampling_rate/velocity;
   double time_increment = (time_interval[1]-time_interval[0])/sampling_rate;
   double time_samples[sampling_rate+1];
   time_samples[0] = time_interval[0];
@@ -328,15 +452,24 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
     distance[i] = final_position[i] - current_state.position[i];
   }
 
-  for(int i = 0; i<DOF_JOINTS; i++)
-    for(int j = 0; j<sampling_rate+1; j++)
-      sigmoid_samples[i][j] = sigmoidFunction(current_state.position[i], distance[i], 1.0, time_samples[j]);
+  for(int i = 0; i<DOF_JOINTS; i++) {
+    if(stop_table[i] == 0) {
+      for(int j = 0; j<sampling_rate+1; j++)
+        sigmoid_samples[i][j] = sigmoidFunction(current_state.position[i], distance[i], /*1.0,*/ time_samples[j]);
+    }
+    else if(stop_table[i] == 1) {
+      continue;
+    }
+  }
   
   int j = 0;
   ros::Rate rate(1000);  
   while(j<sampling_rate+1) {
     for(int i = 0; i<DOF_JOINTS; i++) {
-      current_state.position[i] =  sigmoid_samples[i][j];
+      if(stop_table[i] == 0)
+        current_state.position[i] =  sigmoid_samples[i][j];
+      else if(stop_table[i] == 1)
+        current_state.position[i] =  current_state.position[i];
     }
     desired_state_pub.publish(current_state);
     j = j+1;
@@ -346,7 +479,8 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
 
 }
 
-double AllegroNodeGraspController::sigmoidFunction(double initial_position, double distance, double velocity, double time_sample) {
+double AllegroNodeGraspController::sigmoidFunction(double initial_position, double distance, /*double velocity,*/ double time_sample) {
+  //std::cout << "sigmoid velocity:" << velocity << std::endl;
   double y = initial_position + (distance/(1+exp((-velocity)*time_sample)));
   return y;
 }
