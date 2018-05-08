@@ -321,29 +321,53 @@ void AllegroNodeGraspController::separateFingers(){
 void AllegroNodeGraspController::separateSmart() {
   double vector_a[DOF_JOINTS];
   double vector_height[DOF_JOINTS];
-  double unity_vector_a[DOF_JOINTS];
-  double unity_vector_height[DOF_JOINTS];
+  //double unity_vector_a[DOF_JOINTS];
+  //double unity_vector_height[DOF_JOINTS];
 
   double *ptrVector_a, *ptrVector_height;
   ptrVector_a = vector_a;
   ptrVector_height = vector_height;
   findVectors(ptrVector_a, ptrVector_height);
 
-  for (int i = 0; i < DOF_JOINTS; ++i)
+  /*for (int i = 0; i < DOF_JOINTS; ++i)
   {
     std::cout << "vector height " << vector_height[i] << std::endl;
-  }
+  }*/
 
-  for (int i = 0; i < DOF_JOINTS; ++i)
+  /*for (int i = 0; i < DOF_JOINTS; ++i)
   {
     unity_vector_a[i] = vector_a[i]/euclideanNorm(vector_a);
+    std::cout << "unity_vector_a " << unity_vector_a[i] << std::endl;
     unity_vector_height[i] = vector_height[i]/euclideanNorm(vector_height);
+    std::cout << "unity_vector_height " << unity_vector_height[i] << std::endl;
+  }*/
+
+  double weight_a[11];
+  double weight_h[11];
+  weight_a[0] = -1.0;
+  weight_h[0] = 0.0;
+  double increment = 0.1;
+  for(int i =0; i<10; i++) {
+    weight_a[i+1] = weight_a[i] + increment;
+    weight_h[i+1] = weight_h[i] + increment;
   }
 
+  for (int i = 0; i < 11; ++i)
+  {
+    std::cout << "weight_h " << weight_h[i] << std::endl;
+  }
+  
 
-
-
-
+  double intermediatePositons[DOF_JOINTS];
+  for(int j =0; j<11; j++) {
+    //std::cout << "vector height " << vector_height[i] << std::endl;
+    for (int i = 0; i<DOF_JOINTS; i++)
+    {
+      intermediatePositons[i] = current_state.position[i] + (weight_a[j]*vector_a[i]/2   + weight_h[j]*vector_height[i]);
+    }
+    smoothPositionControlling(intermediatePositons);
+  }
+    
 
 }
 
