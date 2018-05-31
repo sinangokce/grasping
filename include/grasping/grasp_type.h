@@ -55,6 +55,7 @@ class AllegroNodeGraspController {
 
     void compareString(std::string const &grasp_type);
     void getCurrentPosition();
+    void potentialField();
     void getJointAngles();
 
     void smoothPositionControlling(double final_position[]);
