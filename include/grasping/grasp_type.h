@@ -14,6 +14,10 @@
 #include <math.h> 
 #include <stdlib.h>
 
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+//#include <math.h>
+
 
 #include <string>
 #include <boost/thread/thread.hpp>
@@ -56,7 +60,7 @@ class AllegroNodeGraspController {
     void compareString(std::string const &grasp_type);
     void getCurrentPosition();
     void potentialField();
-    void getJointAngles();
+    void getJointAngles(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
 
     void smoothPositionControlling(double final_position[]);
 

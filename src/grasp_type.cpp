@@ -1,9 +1,7 @@
 #include <grasping/grasp_type.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
-#include <math.h>
+
 
 
 #define RADIANS_TO_DEGREES(radians) ((radians) * (180.0 / M_PI))
@@ -54,11 +52,11 @@ double L4_th =  0.0423;
 
 
 
-
-Eigen::Matrix<long double, 4, 1> pos_ind;
-Eigen::Matrix<long double, 4, 1> pos_ind_middle;
-Eigen::Matrix<long double, 4, 1> pos_th;
-Eigen::Matrix<long double, 4, 1> pos_th_middle;
+Eigen::Matrix<long double, 4, 1> pos;
+Eigen::Matrix<long double, 3, 1> pos_ind;
+Eigen::Matrix<long double, 3, 1> pos_ind_middle;
+Eigen::Matrix<long double, 3, 1> pos_th;
+Eigen::Matrix<long double, 3, 1> pos_th_middle;
 Eigen::Matrix<long double, 4, 4> trans_ind;
 
 
@@ -75,6 +73,11 @@ Eigen::Matrix<long double, 3, 1> v_attr;
 Eigen::Matrix<long double, 3, 1> v_tot;
 Eigen::Matrix<long double, 3, 1> new_position;
 
+
+
+
+Eigen::Matrix<long double, 2, 2> J_th;
+Eigen::Matrix<long double, 2, 2> J_th_inv;
 
 
 //Eigen::Matrix4d Trans_matrix;
@@ -340,9 +343,10 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   if(first_run)
     moveToDesiredGraspType();
   else if(!first_run) {
+    potentialField();
     //openHand();
     //separateFingers();//to avoid collisions
-    separateSmart();
+    ///////////////separateSmart();
     //moveToDesiredGraspType();
   }
 
@@ -393,10 +397,10 @@ void AllegroNodeGraspController::getCurrentPosition() {
   double teta2_ind =  current_state.position[1];
   double teta1_ind =  current_state.position[0];
 
-  trans_ind << 1, 0, 0, Ltx_ind, 
+  /*trans_ind << 1, 0, 0, Ltx_ind, 
              0, cos(angle_ind), -sin(angle_ind), Lty_ind,
              0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
-             0, 0, 0, 1;
+             0, 0, 0, 1;*/ 
 
   q.w() = -0.477714;
   q.x() = -0.5213334;
@@ -405,12 +409,10 @@ void AllegroNodeGraspController::getCurrentPosition() {
 
   quat_to_rot = q.normalized().toRotationMatrix(); 
 
-
-
   trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
-                  quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
-                  quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
-                  0,0,0,1;
+              quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
+              quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
+              0,0,0,1;
              
    
   R1 << 1, 0, 0, 0,
@@ -418,21 +420,30 @@ void AllegroNodeGraspController::getCurrentPosition() {
         0, sin(teta1_th), cos(teta1_th), 0,
         0,0,0,1;
 
-  trans_th = trans_th*R1;     
+  trans_th = trans_th*R1; 
 
-  pos_ind << cos(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
-             sin(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
-             L1_ind + (L3_ind*cos(teta2_ind+teta3_ind) + L2_ind*cos(teta2_ind) + L4_ind*cos(teta2_ind+teta3_ind+teta4_ind)),
-             1;
+  pos << cos(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+         sin(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+         L1_ind + (L3_ind*cos(teta2_ind+teta3_ind) + L2_ind*cos(teta2_ind) + L4_ind*cos(teta2_ind+teta3_ind+teta4_ind)),
+         1;
+
+  pos_ind << pos(0,0), pos(1,0), pos(2,0);
+
+  pos = trans_ind*pos;
+
+  pos_ind_middle << pos(0,0), pos(1,0), pos(2,0); 
 
 
-  pos_th <<  L1x_th + cos(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
+  pos <<  L1x_th + cos(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
              L1y_th + sin(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
              L2_th + L1z_th + L4_th*cos(teta3_th+teta4_th) + L3_th*cos(teta3_th),
              1;
 
-  pos_ind_middle = trans_ind*pos_ind;
-  pos_th_middle = trans_th*pos_th; 
+  pos_th << pos(0,0), pos(1,0), pos(2,0);
+
+  pos = trans_th*pos;           
+
+  pos_th_middle << pos(0,0), pos(1,0), pos(2,0); 
 
   std::cout << "pos_ind\n   " << pos_ind << std::endl;  
   std::cout << "pos_th\n   " << pos_th_middle << std::endl;
@@ -442,16 +453,16 @@ void AllegroNodeGraspController::getCurrentPosition() {
 
 void AllegroNodeGraspController::potentialField() {
 
-  lateral_th << 0.0346413, -0.0740804, -0.0740804;
+  lateral_th << 0.0346413, -0.0740804, 0.0113081;
   double Pi = 2*asin(1);
-
 
   getCurrentPosition();
   difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
                 (pos_th_middle(1,0)-pos_ind_middle(1,0)),
                 (pos_th_middle(2,0)-pos_ind_middle(2,0));
 
-  d_0 = difference.norm();
+  d_0 = difference.norm()*100;
+  std::cout << "d_0 = " << d_0 << std::endl;
   double rep_angle; 
 
   if(difference(0,0) >= 0) 
@@ -472,7 +483,58 @@ void AllegroNodeGraspController::potentialField() {
   v_tot = v_rep+v_attr;
 
   new_position = pos_th_middle + v_tot;
+
+  std::cout << "v_attr = " << v_attr << std::endl;
+  std::cout << "new_position " << new_position << std::endl;
  
+}
+
+void AllegroNodeGraspController::getJointAngles(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/) {
+
+  long double pos_x_th = pos_th(0,0);
+  long double pos_y_th = pos_th(1,0);
+  long double pos_z_th = pos_th(2,0);
+
+  Eigen::Matrix<long double, 2, 1> x_th;
+  Eigen::Matrix<long double, 2, 1> x_new_th;
+  Eigen::Matrix<long double, 2, 1> difference_th;
+
+  x_th << current_state.position[14], current_state.position[15];
+  x_new_th << current_state.position[14], current_state.position[15];
+  
+  long double k3 = cos(atan((pos_y_th-L1y_th)/(pos_x_th-L1x_th)));
+
+  while(true){
+
+    x_th(0) = x_new_th(0);
+    x_th(1) = x_new_th(1);
+
+    long double df11 =  L4_th*cos(x_th(0)+x_th(1))+L3_th*cos(x_th(0));
+    long double df12 =  L4_th*cos(x_th(0)+x_th(1));
+    long double df21 = -L4_th*sin(x_th(0)+x_th(1))-L3_th*sin(x_th(0));
+    long double df22 = -L4_th*sin(x_th(0)+x_th(1));
+    J_th << df11,df12,df21,df22;
+    J_th_inv = pseudoinverse2(J_th);
+
+    Eigen::Matrix<long double, 2, 1> fvec_th( ((pos_x_th-L1x_th)/k3)  - L4_th*sin(x_th(0)+x_th(1)) - L3_th*sin(x_th(0)) ,
+                                             pos_z_th-L2_th - L1z_th - L4_th*cos(x_th(0)+x_th(1)) - L3_th*cos(x_th(0)));
+
+    x_new_th(0) = x_th(0) - (J_th_inv(0,0)*fvec(0)+J_th_inv(0,1)*fvec(1));
+    x_new_th(1) = x_th(1) - (J_th_inv(1,0)*fvec(0)+J_th_inv(1,1)*fvec(1));
+
+    difference_th=x_new_th-x_th;
+
+    if(difference_th.norm() < 1e-2) {
+      std::cout << "posx =" << L1x_th + k3*(L4_th*sin(x_th(0)+x_th(1))+L3_th*sin(x_th(0))) << std::endl;
+      std::cout << "posy =" << L1y_th + k4*(L4_th*sin(x_th(0)+x_th(1))+L3_th*sin(x_th(0))) << std::endl;
+      std::cout << "posz =" << L2_th + L1z_th + L4_th*cos(x_th(0)+x_th(1)) + L3_th*cos(x_th(0)) << std::endl;
+      break;
+    }
+    
+  }
+
+  
+
 }
 
 void AllegroNodeGraspController::moveToDesiredGraspType() {
@@ -821,6 +883,13 @@ void AllegroNodeGraspController::initControllerxx() {
   
   desired_state.position.resize(DOF_JOINTS);
   desired_state.velocity.resize(DOF_JOINTS);
+
+  trans_ind << 1, 0, 0, Ltx_ind, 
+             0, cos(angle_ind), -sin(angle_ind), Lty_ind,
+             0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
+             0, 0, 0, 1;
+
+  
 
   first_run = true;
 }
