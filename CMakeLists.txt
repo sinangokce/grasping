@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
 # roslaunch  # Disabled due to testing
 )
 
+find_package(Eigen3 REQUIRED)
+
 add_message_files(
    FILES
    stop_table.msg
@@ -43,6 +45,8 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
 )
+
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 ## Declare executables
 add_executable(grasp_type src/grasp_type.cpp src/grasp_type_node.cpp)

@@ -15,9 +15,12 @@ find_package(catkin REQUIRED COMPONENTS
 # roslaunch  # Disabled due to testing
 )
 
+find_package(Eigen3 REQUIRED)
+
 add_message_files(
    FILES
    stop_table.msg
+   sensor_data.msg
 )
 
 generate_messages(
@@ -43,10 +46,16 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 ## Declare executables
 add_executable(grasp_type src/grasp_type.cpp src/grasp_type_node.cpp)
 target_link_libraries(grasp_type allegro_node ${catkin_LIBRARIES})
 add_dependencies(grasp_type ${catkin_EXPORTED_TARGETS})
+
+add_executable(grasp_type_collision src/grasp_type_collision.cpp src/grasp_type_node.cpp)
+target_link_libraries(grasp_type allegro_node ${catkin_LIBRARIES})
+add_dependencies(grasp_type_collision ${catkin_EXPORTED_TARGETS})
 
 add_executable(current_listener src/current_listener.cpp src/current_listener_node.cpp)
 target_link_libraries(current_listener allegro_node ${catkin_LIBRARIES})
@@ -60,6 +69,7 @@ target_link_libraries(current_listener allegro_node ${catkin_LIBRARIES})
 
 install(TARGETS
   grasp_type
+  grasp_type_collision
   current_listener  
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

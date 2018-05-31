@@ -1,6 +1,9 @@
 #include <grasping/grasp_type.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <math.h>
 
 
 #define RADIANS_TO_DEGREES(radians) ((radians) * (180.0 / M_PI))
@@ -31,6 +34,83 @@ bool first_run;
 //bool separated;
 //double jointMaxPositions[DOF_JOINTS];
 //double jointMinPositions[DOF_JOINTS];
+
+
+double L1_ind =  0.0164;
+double L2_ind =  0.054;
+double L3_ind =  0.0384;
+double L4_ind =  0.0267;
+double Ltx_ind =  0.0;
+double Lty_ind =  -0.0435;
+double Ltz_ind =  -0.002242;
+double angle_ind = DEGREES_TO_RADIANS(5);
+
+double L1x_th =  -0.027;
+double L1y_th =  -0.005;
+double L1z_th =  0.0399;
+double L2_th =  0.0177;
+double L3_th =  0.0514;
+double L4_th =  0.0423;
+
+
+
+
+Eigen::Matrix<long double, 4, 1> pos_ind;
+Eigen::Matrix<long double, 4, 1> pos_th;
+Eigen::Matrix<long double, 4, 4> trans_ind;
+Eigen::Matrix<long double, 4, 4> trans_th;
+Eigen::Matrix<long double, 4, 4> R1;
+Eigen::Quaterniond q;
+Eigen::Matrix3d quat_to_rot;
+//Eigen::Matrix4d Trans_matrix;
+//Eigen::Matrix4d R1;
+
+using namespace Eigen;
+
+template <class MatT>
+Eigen::Matrix<typename MatT::Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompileTime>
+pseudoinverse(const MatT &mat, typename MatT::Scalar tolerance = typename MatT::Scalar{1e-16}) // choose appropriately
+{
+    typedef typename MatT::Scalar Scalar;
+    auto svd = mat.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+    const auto &singularValues = svd.singularValues();
+    Eigen::Matrix<Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompileTime> singularValuesInvTransposed(mat.cols(), mat.rows());
+    singularValuesInvTransposed.setZero();
+    for (unsigned int i = 0; i < singularValues.size(); ++i) {
+        if (singularValues(i) > tolerance)
+        {
+            singularValuesInvTransposed(0, i) = Scalar{1} / singularValues(i);
+            singularValuesInvTransposed(1, i) = Scalar{1} / singularValues(i);
+            singularValuesInvTransposed(2, i) = Scalar{1} / singularValues(i);
+        }
+    }
+    auto U = svd.matrixU();
+    auto V = svd.matrixV();
+    return (V.cwiseProduct(singularValuesInvTransposed)) * U.transpose();
+}
+
+
+template <class MatT>
+Eigen::Matrix<typename MatT::Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompileTime>
+pseudoinverse2(const MatT &mat, typename MatT::Scalar tolerance = typename MatT::Scalar{1e-16}) // choose appropriately
+{
+    typedef typename MatT::Scalar Scalar;
+    auto svd = mat.jacobiSvd(Eigen::ComputeFullU | Eigen::ComputeFullV);
+    const auto &singularValues = svd.singularValues();
+    Eigen::Matrix<Scalar, MatT::ColsAtCompileTime, MatT::RowsAtCompileTime> singularValuesInvTransposed(mat.cols(), mat.rows());
+    singularValuesInvTransposed.setZero();
+    for (unsigned int i = 0; i < singularValues.size(); ++i) {
+        if (singularValues(i) > tolerance)
+        {
+            singularValuesInvTransposed(0, i) = Scalar{1} / singularValues(i);
+            singularValuesInvTransposed(1, i) = Scalar{1} / singularValues(i);
+        }
+    }
+    auto U = svd.matrixU();
+    auto V = svd.matrixV();
+    return (V.cwiseProduct(singularValuesInvTransposed)) * U.transpose();
+}
+
 
 AllegroNodeGraspController::AllegroNodeGraspController() {
          
@@ -236,6 +316,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
   compareString(grasp_type);
 
+
   for (int i = 0; i < DOF_JOINTS; i++) {
     joint[i] = 0;
     stop_table[i] = 0;
@@ -286,6 +367,63 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
   }
 }
 
+void AllegroNodeGraspController::getCurrentPosition() {
+  double teta4_th =  current_state.position[15];
+  double teta3_th =  current_state.position[14];
+  double teta2_th =  -current_state.position[13];
+  double teta1_th =  current_state.position[12];
+
+  double teta4_ind =  current_state.position[3];
+  double teta3_ind =  current_state.position[2];
+  double teta2_ind =  current_state.position[1];
+  double teta1_ind =  current_state.position[0];
+
+  trans_ind << 1, 0, 0, Ltx_ind, 
+             0, cos(angle_ind), -sin(angle_ind), Lty_ind,
+             0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
+             0, 0, 0, 1;
+
+  q.w() = -0.477714;
+  q.x() = -0.5213334;
+  q.y() = 0.5213334;
+  q.z() = -0.477714; 
+
+  quat_to_rot = q.normalized().toRotationMatrix(); 
+  trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
+                  quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
+                  quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
+                  0,0,0,1;
+   
+  R1 << 1, 0, 0, 0,
+        0, cos(teta1_th), -sin(teta1_th), 0,
+        0, sin(teta1_th), cos(teta1_th), 0,
+        0,0,0,1;
+
+  trans_th = trans_th*R1;      
+
+  pos_ind << cos(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+             sin(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+             L1_ind + (L3_ind*cos(teta2_ind+teta3_ind) + L2_ind*cos(teta2_ind) + L4_ind*cos(teta2_ind+teta3_ind+teta4_ind)),
+             1;
+
+  pos_ind = trans_ind*pos_ind;     
+
+
+
+  pos_th <<  L1x_th + cos(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
+             L1y_th + sin(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
+             L2_th + L1z_th + L4_th*cos(teta3_th+teta4_th) + L3_th*cos(teta3_th),
+             1;
+
+  pos_th = trans_th*pos_th;     
+  std::cout << "pos_ind\n   " << pos_ind << std::endl;
+  std::cout << "pos_th\n   " << pos_th << std::endl;
+}
+
+void AllegroNodeGraspController::getJointAngles() {
+  
+}
+
 void AllegroNodeGraspController::moveToDesiredGraspType() {
 
   for (int i = 0; i < DOF_JOINTS; i++) {
@@ -294,6 +432,7 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   }
 
   smoothPositionControlling(desired_position);
+  getCurrentPosition();
 }
 
 void AllegroNodeGraspController::separateFingers(){
