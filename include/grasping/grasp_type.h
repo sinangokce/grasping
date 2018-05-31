@@ -58,9 +58,10 @@ class AllegroNodeGraspController {
     void graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg);
 
     void compareString(std::string const &grasp_type);
-    void getCurrentPosition();
+    void getCurrentPosition(double jointAngles[16]);
     void potentialField();
-    void getJointAngles(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
+    void getJointAnglesThumb(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
+    void getJointAnglesIndex(Eigen::Matrix<long double, 3, 1> pos_index/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
 
     void smoothPositionControlling(double final_position[]);
 
@@ -81,6 +82,8 @@ class AllegroNodeGraspController {
     void separateFingers();
 
     void separateSmart();
+
+    void separateSmartly();
 
     void findVectors(double *ptrVect_a, double *ptrVect_height);
 

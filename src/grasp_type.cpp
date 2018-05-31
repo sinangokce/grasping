@@ -20,7 +20,7 @@ float hand_Direction=0;
 double desired_position[DOF_JOINTS] = {0.0};
 double current_position[DOF_JOINTS] = {0.0};
 double initial_position[DOF_JOINTS] = {0.0};
-double distance[DOF_JOINTS] = {0.0};
+
 //double dt;
 //double tnowsec; 
 //double tnowsec_squared; 
@@ -53,20 +53,28 @@ double L4_th =  0.0423;
 
 
 Eigen::Matrix<long double, 4, 1> pos;
+Eigen::Matrix<long double, 4, 1> pos2;
 Eigen::Matrix<long double, 3, 1> pos_ind;
 Eigen::Matrix<long double, 3, 1> pos_ind_middle;
 Eigen::Matrix<long double, 3, 1> pos_th;
 Eigen::Matrix<long double, 3, 1> pos_th_middle;
+Eigen::Matrix<long double, 3, 1> pos_middle_th;
 Eigen::Matrix<long double, 4, 4> trans_ind;
+Eigen::Matrix<long double, 4, 4> trans_ind_tot;
 
 
 Eigen::Quaterniond q;
+Eigen::Quaterniond q1;
 Eigen::Matrix3d quat_to_rot;
+Eigen::Matrix3d quat1_to_rot;
 Eigen::Matrix<long double, 4, 4> trans_th;
+Eigen::Matrix<long double, 4, 4> trans_th_tot;
 Eigen::Matrix<long double, 4, 4> R1;
+Eigen::Matrix<long double, 4, 4> R2;
+Eigen::Matrix<long double, 4, 4> R1_ind;
 Eigen::Matrix<long double, 3, 1> difference;
 double d_0;
-double eff_region=0.08;
+double eff_region=0.04;
 Eigen::Matrix<long double, 3, 1> lateral_th;
 Eigen::Matrix<long double, 3, 1> v_rep;
 Eigen::Matrix<long double, 3, 1> v_attr;
@@ -74,10 +82,11 @@ Eigen::Matrix<long double, 3, 1> v_tot;
 Eigen::Matrix<long double, 3, 1> new_position;
 
 
+Eigen::Matrix<long double, 3, 3> J_th;
+Eigen::Matrix<long double, 3, 3> J_th_inv;
 
-
-Eigen::Matrix<long double, 2, 2> J_th;
-Eigen::Matrix<long double, 2, 2> J_th_inv;
+Eigen::Matrix<long double, 3, 3> J;
+Eigen::Matrix<long double, 3, 3> J_inv;
 
 
 //Eigen::Matrix4d Trans_matrix;
@@ -334,6 +343,10 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
 
   compareString(grasp_type);
 
+  /*Eigen::Matrix<long double, 3, 1> possss_th;
+  possss_th << 0.0482, -0.0395, 0.0947;
+  getJointAngles(possss_th);*/
+
 
   for (int i = 0; i < DOF_JOINTS; i++) {
     joint[i] = 0;
@@ -343,10 +356,12 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   if(first_run)
     moveToDesiredGraspType();
   else if(!first_run) {
-    potentialField();
+    //potentialField();
     //openHand();
     //separateFingers();//to avoid collisions
-    ///////////////separateSmart();
+    
+    separateSmartly();
+    moveToDesiredGraspType();
     //moveToDesiredGraspType();
   }
 
@@ -386,33 +401,23 @@ void AllegroNodeGraspController::compareString(std::string const &grasp_type) {
   }
 }
 
-void AllegroNodeGraspController::getCurrentPosition() {
-  double teta4_th =  current_state.position[15];
-  double teta3_th =  current_state.position[14];
-  double teta2_th =  -current_state.position[13];
-  double teta1_th =  current_state.position[12];
+void AllegroNodeGraspController::getCurrentPosition(double jointAngles[16]) {
+  double teta4_th =  jointAngles[15];
+  double teta3_th =  jointAngles[14];
+  double teta2_th =  -jointAngles[13];
+  double teta1_th =  jointAngles[12];
 
-  double teta4_ind =  current_state.position[3];
-  double teta3_ind =  current_state.position[2];
-  double teta2_ind =  current_state.position[1];
-  double teta1_ind =  current_state.position[0];
+  double teta4_ind =  jointAngles[3];
+  double teta3_ind =  jointAngles[2];
+  double teta2_ind =  jointAngles[1];
+  double teta1_ind =  jointAngles[0];
 
   /*trans_ind << 1, 0, 0, Ltx_ind, 
              0, cos(angle_ind), -sin(angle_ind), Lty_ind,
              0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
              0, 0, 0, 1;*/ 
 
-  q.w() = -0.477714;
-  q.x() = -0.5213334;
-  q.y() = 0.5213334;
-  q.z() = -0.477714; 
-
-  quat_to_rot = q.normalized().toRotationMatrix(); 
-
-  trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
-              quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
-              quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
-              0,0,0,1;
+  
              
    
   R1 << 1, 0, 0, 0,
@@ -420,55 +425,80 @@ void AllegroNodeGraspController::getCurrentPosition() {
         0, sin(teta1_th), cos(teta1_th), 0,
         0,0,0,1;
 
-  trans_th = trans_th*R1; 
+  R1_ind << cos(current_state.position[0]), -sin(current_state.position[0]), 0, 0,
+            sin(current_state.position[0]), cos(current_state.position[0]), 0, 0,
+            0, 0,  1, 0,
+            0,0,0,1;      
 
-  pos << cos(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+  trans_th_tot = trans_th*R1; 
+  trans_ind_tot = trans_ind*R1_ind;
+
+
+  /*pos << cos(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
          sin(teta1_ind)*(L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
          L1_ind + (L3_ind*cos(teta2_ind+teta3_ind) + L2_ind*cos(teta2_ind) + L4_ind*cos(teta2_ind+teta3_ind+teta4_ind)),
-         1;
+         1;*/
+
+  pos << (L3_ind*sin(teta2_ind+teta3_ind) + L2_ind*sin(teta2_ind) + L4_ind*sin(teta2_ind+teta3_ind+teta4_ind)),
+         0,
+         L1_ind + (L3_ind*cos(teta2_ind+teta3_ind) + L2_ind*cos(teta2_ind) + L4_ind*cos(teta2_ind+teta3_ind+teta4_ind)),
+         1;       
 
   pos_ind << pos(0,0), pos(1,0), pos(2,0);
 
-  pos = trans_ind*pos;
+  pos = trans_ind_tot*pos;
 
   pos_ind_middle << pos(0,0), pos(1,0), pos(2,0); 
 
+  //std::cout << "pos_ind\n   " << pos_ind << std::endl; 
+  //std::cout << "pos_ind_middle2132131\n   " << pos_ind_middle << std::endl; 
+
 
   pos <<  L1x_th + cos(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
-             L1y_th + sin(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
-             L2_th + L1z_th + L4_th*cos(teta3_th+teta4_th) + L3_th*cos(teta3_th),
-             1;
+          L1y_th + sin(teta2_th)*(L4_th*sin(teta3_th+teta4_th) + L3_th*sin(teta3_th)),
+          L2_th + L1z_th + L4_th*cos(teta3_th+teta4_th) + L3_th*cos(teta3_th),
+          1;
 
   pos_th << pos(0,0), pos(1,0), pos(2,0);
 
-  pos = trans_th*pos;           
+  pos = trans_th_tot*pos;           
 
   pos_th_middle << pos(0,0), pos(1,0), pos(2,0); 
 
-  std::cout << "pos_ind\n   " << pos_ind << std::endl;  
-  std::cout << "pos_th\n   " << pos_th_middle << std::endl;
+  //std::cout << "pos_ind\n   " << pos_ind << std::endl;  
+  //std::cout << "pos_th\n   " << pos_th_middle << std::endl;
 
   
 }
 
 void AllegroNodeGraspController::potentialField() {
 
-  lateral_th << 0.0346413, -0.0740804, 0.0113081;
+  lateral_th << 0.0535676, -0.0423956, -0.0511716;//middle reference
   double Pi = 2*asin(1);
 
-  getCurrentPosition();
+  //getCurrentPosition();
+
+  //std::cout << "pos_th_middle \n " << pos_th_middle << std::endl;
+  //std::cout << "pos_ind_middle \n " << pos_ind_middle << std::endl;
+
   difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
                 (pos_th_middle(1,0)-pos_ind_middle(1,0)),
                 (pos_th_middle(2,0)-pos_ind_middle(2,0));
 
-  d_0 = difference.norm()*100;
-  std::cout << "d_0 = " << d_0 << std::endl;
+  d_0 = difference.norm();
+
+
+
+  //std::cout << "d_0 = " << d_0 << std::endl;
   double rep_angle; 
 
   if(difference(0,0) >= 0) 
     rep_angle = atan(difference(1,0)/difference(0,0));
   else 
     rep_angle = Pi + atan(difference(1,0)/difference(0,0));
+
+
+  //std::cout << "rep_angle \n " << rep_angle << std::endl;
 
   v_attr << (lateral_th(0,0)-pos_th_middle(0,0)),
             (lateral_th(1,0)-pos_th_middle(1,0)),
@@ -484,56 +514,153 @@ void AllegroNodeGraspController::potentialField() {
 
   new_position = pos_th_middle + v_tot;
 
-  std::cout << "v_attr = " << v_attr << std::endl;
-  std::cout << "new_position " << new_position << std::endl;
+  /*std::cout << "v_attr \n " << v_attr << std::endl;
+  std::cout << "v_rep \n " << v_rep << std::endl;
+  std::cout << "v_tot \n " << v_tot << std::endl;
+  std::cout << "new_position " << new_position << std::endl;*/
+  
+  getJointAnglesIndex(new_position);
  
 }
 
-void AllegroNodeGraspController::getJointAngles(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/) {
+void AllegroNodeGraspController::getJointAnglesThumb(Eigen::Matrix<long double, 3, 1> pos_thumb/*, Eigen::Matrix<long double, 3, 1> pos_ind*/) {
 
-  long double pos_x_th = pos_th(0,0);
-  long double pos_y_th = pos_th(1,0);
-  long double pos_z_th = pos_th(2,0);
+  double Pi = 2*asin(1);
+  double Pi2 = 2*Pi;
 
-  Eigen::Matrix<long double, 2, 1> x_th;
-  Eigen::Matrix<long double, 2, 1> x_new_th;
-  Eigen::Matrix<long double, 2, 1> difference_th;
+  R2 << 1, 0, 0, 0,
+        0, cos(current_state.position[12]), -sin(current_state.position[12]), 0,
+        0, sin(current_state.position[12]),  cos(current_state.position[12]), 0,
+        0,0,0,1;
 
-  x_th << current_state.position[14], current_state.position[15];
-  x_new_th << current_state.position[14], current_state.position[15];
+  pos2 << pos_thumb(0,0), pos_thumb(1,0), pos_thumb(2,0), 1; 
+  pos2 = (R2.inverse()) * (trans_th.inverse()) * pos2;
+  pos2(1,0) = -pos2(1,0);  
+
+  std::cout << "yeni pozzz \n" << pos2 << std::endl; 
+
+
+  long double pos_x_th = pos2(0,0);
+  long double pos_y_th = pos2(1,0);
+  long double pos_z_th = pos2(2,0);
+
+  Eigen::Matrix<long double, 3, 1> x_th;
+  Eigen::Matrix<long double, 3, 1> x_new_th;
+  Eigen::Matrix<long double, 3, 1> difference_th;
+
+
+  //x_th << current_state.position[14], current_state.position[15];
+  //x_new_th << current_state.position[14], current_state.position[15];
+
+  x_th << 0.2,1.5, 0.2;
+  x_new_th << 0.2,1.5, 0.2;
+
+  std::cout << "x_th" << x_th << std::endl;
+
+  std::cout << "teta1" << current_state.position[12] << std::endl;
+
+  long double teta2;
+
+  if( (pos_x_th-L1x_th) >= 0) 
+    teta2 = atan((pos_y_th-L1y_th)/(pos_x_th-L1x_th));
+  else 
+    teta2 = Pi + atan((pos_y_th-L1y_th)/(pos_x_th-L1x_th));
   
-  long double k3 = cos(atan((pos_y_th-L1y_th)/(pos_x_th-L1x_th)));
+  long double k3 = cos(teta2);
+  long double k4 = sin(teta2);
+
+  /*long double df11 =  L4_th*cos(x_th(0)+x_th(1))+L3_th*cos(x_th(0));
+  long double df12 =  L4_th*cos(x_th(0)+x_th(1));
+  long double df21 = -L4_th*sin(x_th(0)+x_th(1))-L3_th*sin(x_th(0));
+  long double df22 = -L4_th*sin(x_th(0)+x_th(1));*/
+
+  long double df11 =  -sin(x_th(0))*(L4_th*sin(x_th(1)+x_th(2)) + L3_th*sin(x_th(1)));
+  long double df12 =   cos(x_th(0))*(L4_th*cos(x_th(1)+x_th(2)) + L3_th*cos(x_th(1)));
+  long double df13 =   cos(x_th(0))*(L4_th*cos(x_th(1)+x_th(2)));
+
+  long double df21 =  cos(x_th(0))*(L4_th*sin(x_th(1)+x_th(2)) + L3_th*sin(x_th(1)));
+  long double df22 =  sin(x_th(0))*(L4_th*cos(x_th(1)+x_th(2)) + L3_th*cos(x_th(1)));
+  long double df23 =  sin(x_th(0))*(L4_th*cos(x_th(1)+x_th(2)));
+
+  long double df31 = 0;
+  long double df32 = -L4_th*sin(x_th(1)+x_th(2))-L3_th*sin(x_th(1));
+  long double df33 = -L4_th*sin(x_th(1)+x_th(2));
+
+  //J_th << df11,df12,df21,df22;
+  //J_th_inv = pseudoinverse2(J_th);
+
+  J_th << df11, df12, df13, df21, df22, df23, df31, df32, df33;
+  J_th_inv = pseudoinverse(J_th);
 
   while(true){
 
     x_th(0) = x_new_th(0);
     x_th(1) = x_new_th(1);
+    x_th(2) = x_new_th(2);
 
-    long double df11 =  L4_th*cos(x_th(0)+x_th(1))+L3_th*cos(x_th(0));
+    /*long double df11 =  L4_th*cos(x_th(0)+x_th(1))+L3_th*cos(x_th(0));
     long double df12 =  L4_th*cos(x_th(0)+x_th(1));
     long double df21 = -L4_th*sin(x_th(0)+x_th(1))-L3_th*sin(x_th(0));
     long double df22 = -L4_th*sin(x_th(0)+x_th(1));
     J_th << df11,df12,df21,df22;
-    J_th_inv = pseudoinverse2(J_th);
+    J_th_inv = pseudoinverse2(J_th);*/
 
-    Eigen::Matrix<long double, 2, 1> fvec_th( ((pos_x_th-L1x_th)/k3)  - L4_th*sin(x_th(0)+x_th(1)) - L3_th*sin(x_th(0)) ,
-                                             pos_z_th-L2_th - L1z_th - L4_th*cos(x_th(0)+x_th(1)) - L3_th*cos(x_th(0)));
+    /*Eigen::Matrix<long double, 2, 1> fvec_th( ((pos_x_th-L1x_th)/k3)  - L4_th*sin(x_th(0)+x_th(1)) - L3_th*sin(x_th(0)) ,
+                                             pos_z_th-L2_th - L1z_th - L4_th*cos(x_th(0)+x_th(1)) - L3_th*cos(x_th(0)));*/
 
-    x_new_th(0) = x_th(0) - (J_th_inv(0,0)*fvec(0)+J_th_inv(0,1)*fvec(1));
-    x_new_th(1) = x_th(1) - (J_th_inv(1,0)*fvec(0)+J_th_inv(1,1)*fvec(1));
+    Eigen::Matrix<long double, 3, 1> fvec_th( pos_x_th - L1x_th - cos(x_th(0))*(L4_th*sin(x_th(1)+x_th(2)) + L3_th*sin(x_th(1))) ,
+                                              pos_y_th - L1y_th - sin(x_th(0))*(L4_th*sin(x_th(1)+x_th(2)) + L3_th*sin(x_th(1))) ,
+                                              pos_z_th - L2_th - L1z_th - L4_th*cos(x_th(1)+x_th(2)) - L3_th*cos(x_th(1)) );
+
+    /*x_new_th(0) = x_th(0) - (J_th_inv(0,0)*fvec_th(0)+J_th_inv(0,1)*fvec_th(1));
+    x_new_th(1) = x_th(1) - (J_th_inv(1,0)*fvec_th(0)+J_th_inv(1,1)*fvec_th(1));*/
+
+    x_new_th = x_th - (J_th_inv*fvec_th);
+   
+
 
     difference_th=x_new_th-x_th;
 
-    if(difference_th.norm() < 1e-2) {
-      std::cout << "posx =" << L1x_th + k3*(L4_th*sin(x_th(0)+x_th(1))+L3_th*sin(x_th(0))) << std::endl;
-      std::cout << "posy =" << L1y_th + k4*(L4_th*sin(x_th(0)+x_th(1))+L3_th*sin(x_th(0))) << std::endl;
-      std::cout << "posz =" << L2_th + L1z_th + L4_th*cos(x_th(0)+x_th(1)) + L3_th*cos(x_th(0)) << std::endl;
+    if(difference_th.norm() < 1e-1) {
+      std::cout << "posx =" << L1x_th + cos(x_th(0))*(L4_th*sin(x_th(1)+x_th(2))+L3_th*sin(x_th(1))) << std::endl;
+      std::cout << "posy =" << L1y_th + sin(x_th(0))*(L4_th*sin(x_th(1)+x_th(2))+L3_th*sin(x_th(1))) << std::endl;
+      std::cout << "posz =" << L2_th + L1z_th + L4_th*cos(x_th(1)+x_th(2)) + L3_th*cos(x_th(1)) << std::endl;
+
+      double teta2 = std::fmod(x_th(0),Pi2);
+      double teta3 = std::fmod(x_th(1),Pi2);
+      double teta4 = std::fmod(x_th(2),Pi2);
+      std::cout << "posx' =" << L1x_th + k3*(L4_th*sin(std::fmod(x_th(0)+x_th(1),Pi2))+L3_th*sin(teta3)) << std::endl;
+      std::cout << "posy' =" << L1y_th + k4*(L4_th*sin(std::fmod(x_th(0)+x_th(1),Pi2))+L3_th*sin(teta3)) << std::endl;
+      std::cout << "posz' =" << L2_th  + L1z_th + L4_th*cos(std::fmod(x_th(0)+x_th(1),Pi2)) + L3_th*cos(teta3) << std::endl;
+
+      std::cout << "teta2" << teta2 << std::endl;
+      std::cout << "teta3" << teta3 << std::endl;
+      std::cout << "toplam" << std::fmod(x_th(1)+x_th(2),Pi2) << std::endl;
       break;
     }
+    //current_state
+    //desired_state_pub.publish(current_state);
     
   }
 
-  
+}
+
+void AllegroNodeGraspController::getJointAnglesIndex(Eigen::Matrix<long double, 3, 1> pos_index/*, Eigen::Matrix<long double, 3, 1> pos_ind*/) {
+
+  R1_ind << cos(current_state.position[0]), -sin(current_state.position[0]), 0, 0,
+            sin(current_state.position[0]), cos(current_state.position[0]), 0, 0,
+            0, 0,  1, 0,
+            0,0,0,1;
+
+
+  //std::cout << "teta1" << current_state.position[0] << std::endl; 
+  //std::cout << "R1_ind" << R1_ind << std::endl; 
+  //std::cout << "trans_ind" << trans_ind << std::endl;        
+  pos2 << pos_index(0,0), pos_index(1,0), pos_index(2,0), 1; 
+  //pos2  <<  0.0535676, -0.0423956, -0.0511716,1;         
+  pos2 = (R1_ind.inverse()) * (trans_ind.inverse()) * pos2;
+  //pos2(1,0) = -pos2(1,0); 
+  //std::cout << pos2 << std::endl;        
 
 }
 
@@ -545,7 +672,7 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   }
 
   smoothPositionControlling(desired_position);
-  getCurrentPosition();
+  //getCurrentPosition();
 }
 
 void AllegroNodeGraspController::separateFingers(){
@@ -620,6 +747,51 @@ void AllegroNodeGraspController::separateSmart() {
     smoothPositionControlling(intermediatePositons);
   }
     
+
+}
+
+void AllegroNodeGraspController::separateSmartly() {
+  double intermediatePositons[DOF_JOINTS];
+  
+
+  double decrement[DOF_JOINTS];
+
+  getCurrentPosition(intermediatePositons);
+  difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
+                (pos_th_middle(1,0)-pos_ind_middle(1,0)),
+                (pos_th_middle(2,0)-pos_ind_middle(2,0));
+  d_0 = difference.norm();
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  { 
+    intermediatePositons[i] = current_state.position[i];
+    decrement[i] =  current_state.position[i];
+  }
+  
+
+  while (true)  {
+    for (int i = 0; i < DOF_JOINTS; ++i) {
+      intermediatePositons[i] = intermediatePositons[i] - decrement[i]/10;
+    }
+
+    getCurrentPosition(intermediatePositons);
+    difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
+                (pos_th_middle(1,0)-pos_ind_middle(1,0)),
+                (pos_th_middle(2,0)-pos_ind_middle(2,0));
+    d_0 = difference.norm();
+    if(d_0 >= 0.05) {
+      std::cout << "erw" <<std::endl;
+      break;
+    }   
+  }            
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    //std::cout << "intermediatePositons" << intermediatePositons[i] << std::endl;
+  }
+
+  smoothPositionControlling(intermediatePositons);
+
 
 }
 
@@ -713,6 +885,19 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
 
   /*for (int i = 0; i<DOF_JOINTS; i++)
     std::cout << final_position[i] << std::endl;*/
+
+  
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    std::cout << "current_state.position" << current_state.position[i] << std::endl;
+  }
+
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    std::cout << "final_position" << final_position[i] << std::endl;
+  }
+
+  double distance[DOF_JOINTS] = {0.0};
 
   double time_interval[2] = {-5.0 , 5.0};
   //sampling_rate = sampling_rate/velocity;
@@ -884,12 +1069,33 @@ void AllegroNodeGraspController::initControllerxx() {
   desired_state.position.resize(DOF_JOINTS);
   desired_state.velocity.resize(DOF_JOINTS);
 
-  trans_ind << 1, 0, 0, Ltx_ind, 
+  /*trans_ind << 1, 0, 0, Ltx_ind, 
              0, cos(angle_ind), -sin(angle_ind), Lty_ind,
              0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
-             0, 0, 0, 1;
+             0, 0, 0, 1;*/
 
-  
+  q.w() = -0.477714;
+  q.x() = -0.5213334;
+  q.y() = 0.5213334;
+  q.z() = -0.477714; 
+
+  q1.w() = 0.999048;
+  q1.x() = 0.0436194;
+  q1.y() = 0;
+  q1.z() = 0; 
+
+  quat_to_rot = q.normalized().toRotationMatrix(); 
+  quat1_to_rot = q1.normalized().toRotationMatrix(); 
+
+  trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
+              quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
+              quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
+              0,0,0,1;
+
+  trans_ind <<quat1_to_rot(0,0),quat1_to_rot(0,1),quat1_to_rot(0,2),0,
+              quat1_to_rot(1,0),quat1_to_rot(1,1),quat1_to_rot(1,2),-0.0435,
+              quat1_to_rot(2,0),quat1_to_rot(2,1),quat1_to_rot(2,2),-0.002242,
+              0,0,0,1;            
 
   first_run = true;
 }
