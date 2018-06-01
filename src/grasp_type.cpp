@@ -89,6 +89,7 @@ Eigen::Matrix<long double, 3, 3> J;
 Eigen::Matrix<long double, 3, 3> J_inv;
 
 
+
 //Eigen::Matrix4d Trans_matrix;
 //Eigen::Matrix4d R1;
 
@@ -339,8 +340,7 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
     {
       initial_position[i] = desired_position[i];
     } 
-      
-
+  
   compareString(grasp_type);
 
   /*Eigen::Matrix<long double, 3, 1> possss_th;
@@ -354,15 +354,16 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   }
 
   if(first_run)
-    moveToDesiredGraspType();
+    //moveToDesiredGraspType();
+    moveToDesiredGraspType2();
   else if(!first_run) {
     //potentialField();
     //openHand();
     //separateFingers();//to avoid collisions
     
-    separateSmartly();
-    moveToDesiredGraspType();
+    //separateSmartly();
     //moveToDesiredGraspType();
+    moveToDesiredGraspType2();//not smooth controlling
   }
 
   first_run = false;
@@ -675,6 +676,7 @@ void AllegroNodeGraspController::moveToDesiredGraspType() {
   //getCurrentPosition();
 }
 
+
 void AllegroNodeGraspController::separateFingers(){
 
   double separated_position[DOF_JOINTS]; 
@@ -785,13 +787,7 @@ void AllegroNodeGraspController::separateSmartly() {
     }   
   }            
 
-  for (int i = 0; i < DOF_JOINTS; ++i)
-  {
-    //std::cout << "intermediatePositons" << intermediatePositons[i] << std::endl;
-  }
-
   smoothPositionControlling(intermediatePositons);
-
 
 }
 
@@ -883,20 +879,6 @@ double AllegroNodeGraspController::triangleSurface(double s, double norm_a, doub
 
 void AllegroNodeGraspController::smoothPositionControlling(double final_position[]) {
 
-  /*for (int i = 0; i<DOF_JOINTS; i++)
-    std::cout << final_position[i] << std::endl;*/
-
-  
-  for (int i = 0; i < DOF_JOINTS; ++i)
-  {
-    std::cout << "current_state.position" << current_state.position[i] << std::endl;
-  }
-
-  for (int i = 0; i < DOF_JOINTS; ++i)
-  {
-    std::cout << "final_position" << final_position[i] << std::endl;
-  }
-
   double distance[DOF_JOINTS] = {0.0};
 
   double time_interval[2] = {-5.0 , 5.0};
@@ -913,15 +895,24 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
     distance[i] = final_position[i] - current_state.position[i];
   }
 
+
+  std::ofstream myfile("AnglesSmooth.txt");
   for(int i = 0; i<DOF_JOINTS; i++) {
     if(stop_table[i] == 0) {
-      for(int j = 0; j<sampling_rate+1; j++)
+      for(int j = 0; j<sampling_rate+1; j++) {
         sigmoid_samples[i][j] = sigmoidFunction(current_state.position[i], distance[i], /*1.0,*/ time_samples[j]);
+        if (myfile.is_open()) 
+          myfile << int(i) << " " << sigmoid_samples[i][j] <<"\n";         
+        else
+          std::cout << "Unable to open file";
+        }  
     }
     else if(stop_table[i] == 1) {
       continue;
     }
   }
+
+
   
   int j = 0;
   ros::Rate rate(1000);  
@@ -947,8 +938,47 @@ double AllegroNodeGraspController::sigmoidFunction(double initial_position, doub
 }
 
 
+void AllegroNodeGraspController::moveToDesiredGraspType2() { 
 
-/*void AllegroNodeGraspController::updateCurrentPosition() {
+  double distance[DOF_JOINTS] = {0.0};
+
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    distance[i] = desired_position[i] - current_state.position[i];
+    current_state.velocity[i] = (distance[i]/30000);
+    joint[i] = 0;
+    stop_table[i] = 0;
+  }
+
+  startclosing = true;
+
+
+  std::ofstream myfile("AnglesNotSmooth.txt");
+  //int iter = 0;//for txt file
+  bool op = true;
+  while(op){
+
+    for (int i = 0; i < DOF_JOINTS; ++i)
+    {
+      if (myfile.is_open()) 
+        myfile << current_state.position[i] <<"\n";         
+      else
+        std::cout << "Unable to open file";
+    }
+    
+
+    updateCurrentPosition();
+
+    if(checkEquality(joint))
+      break; 
+    
+    desired_state_pub.publish(current_state);
+    usleep(10);
+  }
+
+}
+
+
+void AllegroNodeGraspController::updateCurrentPosition() {
   
 
   for (int i = 0; i < (int)DOF_JOINTS; i++) {
@@ -979,7 +1009,67 @@ double AllegroNodeGraspController::sigmoidFunction(double initial_position, doub
 
 }
 
-void AllegroNodeGraspController::openHand() {
+
+
+bool AllegroNodeGraspController::checkEquality(int array[]) {
+  for (int i = 0; i < DOF_JOINTS; i++) {
+    if(array[i] != 1)
+      return false;
+  }
+  return true;
+}
+
+float AllegroNodeGraspController::average(int sum, int number) {
+
+  float avg;
+
+  avg = sum / number;
+
+  return avg;
+}
+
+void AllegroNodeGraspController::initControllerxx() {
+  current_state.position.resize(DOF_JOINTS);
+  current_state.velocity.resize(DOF_JOINTS);
+  
+  desired_state.position.resize(DOF_JOINTS);
+  desired_state.velocity.resize(DOF_JOINTS);
+
+  q.w() = -0.477714;
+  q.x() = -0.5213334;
+  q.y() = 0.5213334;
+  q.z() = -0.477714; 
+
+  q1.w() = 0.999048;
+  q1.x() = 0.0436194;
+  q1.y() = 0;
+  q1.z() = 0; 
+
+  quat_to_rot = q.normalized().toRotationMatrix(); 
+  quat1_to_rot = q1.normalized().toRotationMatrix(); 
+
+  trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
+              quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
+              quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
+              0,0,0,1;
+
+  trans_ind <<quat1_to_rot(0,0),quat1_to_rot(0,1),quat1_to_rot(0,2),0,
+              quat1_to_rot(1,0),quat1_to_rot(1,1),quat1_to_rot(1,2),-0.0435,
+              quat1_to_rot(2,0),quat1_to_rot(2,1),quat1_to_rot(2,2),-0.002242,
+              0,0,0,1;            
+
+  first_run = true;
+}
+
+void AllegroNodeGraspController::doIt() {
+  ros::Rate rate(250.0);
+  while (ros::ok()) {
+    rate.sleep();
+    ros::spinOnce();
+  }
+}
+
+/*void AllegroNodeGraspController::openHand() {
 
   int negative_table[16];
   int openHandPosition[16];
@@ -1043,67 +1133,4 @@ bool AllegroNodeGraspController::checkSeparate(int array[]) {
     return false;
   
   return true;
-}
-
-bool AllegroNodeGraspController::checkEquality(int array[]) {
-  for (int i = 0; i < DOF_JOINTS; i++) {
-    if(array[i] != 1)
-      return false;
-  }
-  return true;
 }*/
-
-float AllegroNodeGraspController::average(int sum, int number) {
-
-  float avg;
-
-  avg = sum / number;
-
-  return avg;
-}
-
-void AllegroNodeGraspController::initControllerxx() {
-  current_state.position.resize(DOF_JOINTS);
-  current_state.velocity.resize(DOF_JOINTS);
-  
-  desired_state.position.resize(DOF_JOINTS);
-  desired_state.velocity.resize(DOF_JOINTS);
-
-  /*trans_ind << 1, 0, 0, Ltx_ind, 
-             0, cos(angle_ind), -sin(angle_ind), Lty_ind,
-             0, sin(angle_ind),  cos(angle_ind), Ltz_ind,
-             0, 0, 0, 1;*/
-
-  q.w() = -0.477714;
-  q.x() = -0.5213334;
-  q.y() = 0.5213334;
-  q.z() = -0.477714; 
-
-  q1.w() = 0.999048;
-  q1.x() = 0.0436194;
-  q1.y() = 0;
-  q1.z() = 0; 
-
-  quat_to_rot = q.normalized().toRotationMatrix(); 
-  quat1_to_rot = q1.normalized().toRotationMatrix(); 
-
-  trans_th << quat_to_rot(0,0),quat_to_rot(0,1),quat_to_rot(0,2),-0.0182,
-              quat_to_rot(1,0),quat_to_rot(1,1),quat_to_rot(1,2),-0.019333,
-              quat_to_rot(2,0),quat_to_rot(2,1),quat_to_rot(2,2),-0.046687,
-              0,0,0,1;
-
-  trans_ind <<quat1_to_rot(0,0),quat1_to_rot(0,1),quat1_to_rot(0,2),0,
-              quat1_to_rot(1,0),quat1_to_rot(1,1),quat1_to_rot(1,2),-0.0435,
-              quat1_to_rot(2,0),quat1_to_rot(2,1),quat1_to_rot(2,2),-0.002242,
-              0,0,0,1;            
-
-  first_run = true;
-}
-
-void AllegroNodeGraspController::doIt() {
-  ros::Rate rate(250.0);
-  while (ros::ok()) {
-    rate.sleep();
-    ros::spinOnce();
-  }
-}

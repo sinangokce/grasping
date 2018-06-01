@@ -2,6 +2,7 @@
 #define PROJECT_GRASP_TYPE_H
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 #include "ros/ros.h"
@@ -63,6 +64,7 @@ class AllegroNodeGraspController {
     void getJointAnglesThumb(Eigen::Matrix<long double, 3, 1> pos_th/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
     void getJointAnglesIndex(Eigen::Matrix<long double, 3, 1> pos_index/*, Eigen::Matrix<long double, 3, 1> pos_ind*/);
 
+
     void smoothPositionControlling(double final_position[]);
 
     double sigmoidFunction(double initial_position,double distance, /*double velocity,*/ double time_sample);
@@ -70,6 +72,8 @@ class AllegroNodeGraspController {
     //void sampling(double ptrSamples[], int rows, int col);
 
     void moveToDesiredGraspType();
+
+    void moveToDesiredGraspType2();
 
     //void openHand();
 
@@ -98,13 +102,13 @@ class AllegroNodeGraspController {
     //double angleBetweenAandB(double norm_a, double norm_b, double norm_c);
    
 
-    //void updateCurrentPosition();
+    void updateCurrentPosition();
 
 
     //void nextStateCallback(const sensor_msgs::JointState &msg);
     //bool checkSeparate(int array[]);
 
-    //bool checkEquality(int array[]);
+    bool checkEquality(int array[]);
 
     float average(int a, int b);
 
