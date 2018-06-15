@@ -21,17 +21,10 @@ double desired_position[DOF_JOINTS] = {0.0};
 double current_position[DOF_JOINTS] = {0.0};
 double initial_position[DOF_JOINTS] = {0.0};
 
-//double dt;
-//double tnowsec; 
-//double tnowsec_squared; 
-//double tstartsec;
-//double tstartsec_squared;
-
 bool startclosing = true;
 bool first_run;
-//bool separated;
-//double jointMaxPositions[DOF_JOINTS];
-//double jointMinPositions[DOF_JOINTS];
+bool finish_movement = false;
+
 
 
 double L1_ind =  0.0164;
@@ -199,6 +192,7 @@ void AllegroNodeGraspController::sensorDataCallback(const glove_tekscan_ros_wrap
   plotSensorData(sensor_data);
 
   int sensor_stop[8];
+  
   int *p2;
   p2 = stop_table;
 
@@ -329,24 +323,13 @@ void AllegroNodeGraspController::fillStopTable(int *p2, int sensor_stop[]) {
 void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::String::ConstPtr &msg) {
   ROS_INFO("CTRL: Heard: [%s]", msg->data.c_str());
   const std::string grasp_type = msg->data;
-
-  /*if (first_run)
-    for (int i = 0; i < DOF_JOINTS; ++i)
-    {
-      initial_position[i] = 0;
-    }
-  else   */                 
-    for (int i = 0; i < DOF_JOINTS; ++i)
-    {
-      initial_position[i] = desired_position[i];
-    } 
+              
+  for (int i = 0; i < DOF_JOINTS; ++i)
+  {
+    initial_position[i] = desired_position[i];
+  } 
   
   compareString(grasp_type);
-
-  /*Eigen::Matrix<long double, 3, 1> possss_th;
-  possss_th << 0.0482, -0.0395, 0.0947;
-  getJointAngles(possss_th);*/
-
 
   for (int i = 0; i < DOF_JOINTS; i++) {
     joint[i] = 0;
@@ -354,16 +337,31 @@ void AllegroNodeGraspController::graspTypeControllerCallback(const std_msgs::Str
   }
 
   if(first_run)
-    //moveToDesiredGraspType();
-    moveToDesiredGraspType2();
+    moveToDesiredGraspType();
+    //moveToDesiredGraspType2();
   else if(!first_run) {
-    //potentialField();
-    //openHand();
-    //separateFingers();//to avoid collisions
+    double intermediatePositons[DOF_JOINTS];
+    for (int i = 0; i < DOF_JOINTS; ++i)
+    { 
+      intermediatePositons[i] = current_state.position[i];
+    }
+
+    getCurrentPosition(intermediatePositons);
+    difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
+                (pos_th_middle(1,0)-pos_ind_middle(1,0)),
+                (pos_th_middle(2,0)-pos_ind_middle(2,0));
+    d_0 = difference.norm();
+
+    if(d_0 >= 0.05 && finish_movement == false) 
+      moveToDesiredGraspType();
     
-    //separateSmartly();
-    //moveToDesiredGraspType();
-    moveToDesiredGraspType2();//not smooth controlling
+    else {
+      separateSmartly();
+      moveToDesiredGraspType();
+    } 
+    
+
+    //moveToDesiredGraspType2();//not smooth controlling
   }
 
   first_run = false;
@@ -666,14 +664,8 @@ void AllegroNodeGraspController::getJointAnglesIndex(Eigen::Matrix<long double, 
 }
 
 void AllegroNodeGraspController::moveToDesiredGraspType() {
-
-  for (int i = 0; i < DOF_JOINTS; i++) {
-    joint[i] = 0;
-    stop_table[i] = 0;
-  }
-
+  finish_movement = false;
   smoothPositionControlling(desired_position);
-  //getCurrentPosition();
 }
 
 
@@ -758,12 +750,6 @@ void AllegroNodeGraspController::separateSmartly() {
 
   double decrement[DOF_JOINTS];
 
-  getCurrentPosition(intermediatePositons);
-  difference << (pos_th_middle(0,0)-pos_ind_middle(0,0)),
-                (pos_th_middle(1,0)-pos_ind_middle(1,0)),
-                (pos_th_middle(2,0)-pos_ind_middle(2,0));
-  d_0 = difference.norm();
-
   for (int i = 0; i < DOF_JOINTS; ++i)
   { 
     intermediatePositons[i] = current_state.position[i];
@@ -781,10 +767,8 @@ void AllegroNodeGraspController::separateSmartly() {
                 (pos_th_middle(1,0)-pos_ind_middle(1,0)),
                 (pos_th_middle(2,0)-pos_ind_middle(2,0));
     d_0 = difference.norm();
-    if(d_0 >= 0.05) {
-      std::cout << "erw" <<std::endl;
-      break;
-    }   
+    if(d_0 >= 0.05) 
+      break;   
   }            
 
   smoothPositionControlling(intermediatePositons);
@@ -912,8 +896,6 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
     }
   }
 
-
-  
   int j = 0;
   ros::Rate rate(1000);  
   while(j<sampling_rate+1) {
@@ -928,6 +910,7 @@ void AllegroNodeGraspController::smoothPositionControlling(double final_position
     ros::spinOnce();
     rate.sleep();
   }
+  finish_movement = true;
 
 }
 
@@ -944,7 +927,7 @@ void AllegroNodeGraspController::moveToDesiredGraspType2() {
 
   for (int i = 0; i < DOF_JOINTS; i++) {
     distance[i] = desired_position[i] - current_state.position[i];
-    current_state.velocity[i] = (distance[i]/30000);
+    current_state.velocity[i] = (distance[i]/3000);
     joint[i] = 0;
     stop_table[i] = 0;
   }
@@ -972,7 +955,7 @@ void AllegroNodeGraspController::moveToDesiredGraspType2() {
       break; 
     
     desired_state_pub.publish(current_state);
-    usleep(10);
+    usleep(1000);
   }
 
 }
